@@ -4,7 +4,7 @@ import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, query, where } 
 import { 
   FileText, AlertTriangle, Megaphone, CheckCircle, Clock, XCircle, 
   Plus, Trash2, LogOut, ShieldAlert, CheckSquare, RefreshCcw, Users, X, User,
-  ClipboardList, AlertCircle, ArrowUpDown, Calendar
+  ClipboardList, AlertCircle, ArrowUpDown, Calendar, Check, ShieldCheck
 } from 'lucide-react';
 
 export default function StaffDashboard({ user, onLogout }) {
@@ -21,13 +21,15 @@ export default function StaffDashboard({ user, onLogout }) {
 
   // Filtered lists and metrics (excluding admins/staff from residents count)
   const residentsList = usersList.filter(u => u.role !== 'staff' && u.role !== 'admin');
-  const totalResidents = residentsList.length;
+  const pendingUsersList = residentsList.filter(u => !u.status || u.status === 'Pending' || u.status === 'pending');
+  
+  const totalResidents = residentsList.filter(u => u.status === 'Approved' || u.status === 'approved').length;
   const totalRequests = requests.length;
   const pendingRequests = requests.filter(r => !r.status || r.status === 'Pending' || r.status === 'In Review').length;
   const totalComplaints = complaints.length;
   const pendingComplaints = complaints.filter(c => !c.status || c.status === 'Pending' || c.status === 'In Review').length;
 
-  // Modal State for Registered Residents
+  // Modal State for Registered Residents Directory
   const [showUsersModal, setShowUsersModal] = useState(false);
 
   // Lightbox Modal State for Evidence Image Preview
@@ -152,15 +154,6 @@ export default function StaffDashboard({ user, onLogout }) {
   const handleUpdateReqStatus = async (id, newStatus) => {
     try {
       await updateDoc(doc(db, 'requests', id), { status: newStatus });
-      const subQuery = query(collection(db, 'submissions'), where('__name__', '==', id));
-      const subSnap = await getDocs(subQuery);
-      if (!subSnap.empty) {
-        await updateDoc(doc(db, 'submissions', subSnap.docs[0].id), { status: newStatus });
-      } else {
-        try {
-          await updateDoc(doc(db, 'submissions', id), { status: newStatus });
-        } catch (e) {}
-      }
       setRequests(requests.map(r => r.id === id ? { ...r, status: newStatus } : r));
     } catch (err) {
       console.error('Error updating request status:', err);
@@ -171,18 +164,19 @@ export default function StaffDashboard({ user, onLogout }) {
   const handleUpdateComplaintStatus = async (id, newStatus) => {
     try {
       await updateDoc(doc(db, 'complaints', id), { status: newStatus });
-      const subQuery = query(collection(db, 'submissions'), where('__name__', '==', id));
-      const subSnap = await getDocs(subQuery);
-      if (!subSnap.empty) {
-        await updateDoc(doc(db, 'submissions', subSnap.docs[0].id), { status: newStatus });
-      } else {
-        try {
-          await updateDoc(doc(db, 'submissions', id), { status: newStatus });
-        } catch (e) {}
-      }
       setComplaints(complaints.map(c => c.id === id ? { ...c, status: newStatus } : c));
     } catch (err) {
       console.error('Error updating complaint status:', err);
+    }
+  };
+
+  // Update User Account Status (Approve / Reject)
+  const handleUpdateUserAccountStatus = async (userId, newStatus) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), { status: newStatus });
+      setUsersList(usersList.map(u => u.id === userId ? { ...u, status: newStatus } : u));
+    } catch (err) {
+      console.error('Error updating user account status:', err);
     }
   };
 
@@ -280,12 +274,12 @@ export default function StaffDashboard({ user, onLogout }) {
           
           <div className="relative bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 backdrop-blur-xl border border-white/95 rounded-2xl p-5 shadow-xl shadow-sky-900/10 flex items-center justify-between overflow-hidden">
             <div className="space-y-1">
-              <p className="text-[11px] font-extrabold text-sky-900 uppercase tracking-wider">Total Requests</p>
-              <h3 className="text-2xl font-black text-slate-900">{totalRequests}</h3>
-              <p className="text-[10px] text-sky-800 font-medium">All-time submitted</p>
+              <p className="text-[11px] font-extrabold text-sky-900 uppercase tracking-wider">Pending Accounts</p>
+              <h3 className="text-2xl font-black text-amber-700">{pendingUsersList.length}</h3>
+              <p className="text-[10px] text-amber-800 font-medium">Awaiting approval</p>
             </div>
-            <div className="w-12 h-12 bg-sky-400/30 border border-sky-300/60 text-sky-900 rounded-2xl flex items-center justify-center shadow-inner backdrop-blur-md">
-              <ClipboardList size={22} className="text-sky-800" />
+            <div className="w-12 h-12 bg-amber-400/30 border border-amber-300/60 text-amber-900 rounded-2xl flex items-center justify-center shadow-inner backdrop-blur-md">
+              <ShieldAlert size={22} className="text-amber-700" />
             </div>
           </div>
 
@@ -295,8 +289,8 @@ export default function StaffDashboard({ user, onLogout }) {
               <h3 className="text-2xl font-black text-amber-700">{pendingRequests}</h3>
               <p className="text-[10px] text-amber-800 font-medium">Awaiting action</p>
             </div>
-            <div className="w-12 h-12 bg-amber-400/30 border border-amber-300/60 text-amber-900 rounded-2xl flex items-center justify-center shadow-inner backdrop-blur-md">
-              <Clock size={22} className="text-amber-700" />
+            <div className="w-12 h-12 bg-sky-400/30 border border-sky-300/60 text-sky-900 rounded-2xl flex items-center justify-center shadow-inner backdrop-blur-md">
+              <Clock size={22} className="text-sky-800" />
             </div>
           </div>
 
@@ -329,6 +323,15 @@ export default function StaffDashboard({ user, onLogout }) {
           
           {/* Main Navigation Tabs */}
           <div className="flex flex-wrap bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 backdrop-blur-xl p-1.5 rounded-2xl border border-white/95 shadow-xl shadow-sky-900/10">
+            <button
+              onClick={() => setActiveTab('approvals')}
+              className={`py-2.5 px-5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
+                activeTab === 'approvals' ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-sky-600/30' : 'text-sky-950 hover:bg-white/60'
+              }`}
+            >
+              <ShieldCheck size={16} />
+              <span>Pending Accounts ({pendingUsersList.length})</span>
+            </button>
             <button
               onClick={() => setActiveTab('requests')}
               className={`py-2.5 px-5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
@@ -366,7 +369,7 @@ export default function StaffDashboard({ user, onLogout }) {
             <div className="w-7 h-7 rounded-xl bg-sky-400/30 group-hover:bg-sky-600 group-hover:text-white text-sky-900 flex items-center justify-center transition shadow-inner">
               <Users size={15} />
             </div>
-            <span>Registered Residents ({totalResidents})</span>
+            <span>Approved Residents Directory</span>
           </button>
 
         </div>
@@ -375,6 +378,69 @@ export default function StaffDashboard({ user, onLogout }) {
           <div className="text-center py-20 text-sky-900 font-semibold text-sm">Loading records from Firebase...</div>
         ) : (
           <>
+            {/* TAB 0: PENDING ACCOUNT APPROVALS */}
+            {activeTab === 'approvals' && (
+              <div className={glassContainerStyle}>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-sky-200/80">
+                  <div>
+                    <h2 className="text-base font-black text-sky-950">Pending Resident Account Approvals</h2>
+                    <p className="text-xs text-sky-900/90 font-medium">Verify newly registered residents before granting full access to portal features.</p>
+                  </div>
+                </div>
+
+                {pendingUsersList.length === 0 ? (
+                  <p className="text-center py-10 text-xs text-sky-900/80 font-medium">No pending accounts waiting for approval.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-white/50 text-sky-950 uppercase font-extrabold tracking-wider border-b border-sky-200/80">
+                        <tr>
+                          <th className="p-3">Full Name</th>
+                          <th className="p-3">Email Address</th>
+                          <th className="p-3">Purok / Location</th>
+                          <th className="p-3">Account Status</th>
+                          <th className="p-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-sky-200/60 font-medium">
+                        {pendingUsersList.map(u => (
+                          <tr key={u.id} className="hover:bg-white/60 transition">
+                            <td className="p-3">
+                              <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                <User size={14} className="text-sky-700" />
+                                <span>{u.fullName || u.name || 'Unnamed Resident'}</span>
+                              </div>
+                            </td>
+                            <td className="p-3 text-sky-950">{u.email || 'No email provided'}</td>
+                            <td className="p-3 text-sky-950 font-semibold">{u.purok || 'N/A'}</td>
+                            <td className="p-3">
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider inline-block bg-amber-500/20 text-amber-900 border border-amber-400/40">
+                                Pending Approval
+                              </span>
+                            </td>
+                            <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
+                              <button
+                                onClick={() => handleUpdateUserAccountStatus(u.id, 'Approved')}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
+                              >
+                                Approve Account
+                              </button>
+                              <button
+                                onClick={() => handleUpdateUserAccountStatus(u.id, 'Rejected')}
+                                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
+                              >
+                                Reject
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* TAB 1: DOCUMENT REQUESTS */}
             {activeTab === 'requests' && (
               <div className={glassContainerStyle}>
@@ -658,7 +724,7 @@ export default function StaffDashboard({ user, onLogout }) {
 
       </main>
 
-      {/* REGISTERED RESIDENTS MODAL */}
+      {/* REGISTERED RESIDENTS DIRECTORY MODAL */}
       {showUsersModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-md flex items-center justify-center p-4">
           <div className="relative bg-gradient-to-br from-white/95 via-sky-100/90 to-blue-200/80 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/95 w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
@@ -667,7 +733,7 @@ export default function StaffDashboard({ user, onLogout }) {
             <div className="px-6 py-4 bg-gradient-to-r from-sky-600 to-blue-600 text-white flex justify-between items-center border-b border-white/20">
               <div className="flex items-center space-x-2.5">
                 <Users size={20} className="text-sky-100" />
-                <h2 className="text-sm font-black tracking-wide">Registered Residents Directory ({residentsList.length})</h2>
+                <h2 className="text-sm font-black tracking-wide">Approved Residents Directory</h2>
               </div>
               <button 
                 onClick={() => setShowUsersModal(false)}
@@ -679,8 +745,8 @@ export default function StaffDashboard({ user, onLogout }) {
 
             {/* Modal Content / Users Table */}
             <div className="p-6 overflow-y-auto flex-1">
-              {residentsList.length === 0 ? (
-                <p className="text-center py-12 text-xs text-sky-900/80 font-medium">No registered residents found in database.</p>
+              {residentsList.filter(u => u.status === 'Approved' || u.status === 'approved').length === 0 ? (
+                <p className="text-center py-12 text-xs text-sky-900/80 font-medium">No approved residents found in database.</p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
@@ -689,12 +755,12 @@ export default function StaffDashboard({ user, onLogout }) {
                         <th className="p-3">Full Name</th>
                         <th className="p-3">Email Address</th>
                         <th className="p-3">Purok / Location</th>
-                        <th className="p-3">Role / Type</th>
+                        <th className="p-3">Status</th>
                         <th className="p-3">User ID</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-sky-200/60 font-medium">
-                      {residentsList.map(u => (
+                      {residentsList.filter(u => u.status === 'Approved' || u.status === 'approved').map(u => (
                         <tr key={u.id} className="hover:bg-white/60 transition">
                           <td className="p-3">
                             <div className="font-bold text-slate-900 flex items-center gap-1.5">
@@ -706,7 +772,7 @@ export default function StaffDashboard({ user, onLogout }) {
                           <td className="p-3 text-sky-950 font-semibold">{u.purok || 'N/A'}</td>
                           <td className="p-3">
                             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500/20 border border-emerald-400/40 text-emerald-900">
-                              {u.role || 'Resident'}
+                              Approved
                             </span>
                           </td>
                           <td className="p-3 font-mono text-[10px] text-sky-900/80">{u.id}</td>

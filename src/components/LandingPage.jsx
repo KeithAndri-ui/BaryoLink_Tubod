@@ -7,10 +7,11 @@ import {
   ArrowRight, 
   ShieldCheck, 
   Building2, 
-  Users 
+  Users,
+  Info
 } from 'lucide-react';
 
-export default function LandingPage({ onGetStarted }) {
+export default function LandingPage({ onGetStarted, onOpenAbout }) {
   const features = [
     {
       icon: FileText,
@@ -44,6 +45,7 @@ export default function LandingPage({ onGetStarted }) {
       {/* Background Ambient Glass Glows */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-sky-400/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute top-1/3 -left-20 w-80 h-80 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-10 w-96 h-96 bg-sky-300/15 rounded-full blur-3xl pointer-events-none" />
 
       {/* Top Banner Header */}
       <header className="bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-lg shadow-sky-600/20 py-4 px-6 sticky top-0 z-50">
@@ -57,13 +59,15 @@ export default function LandingPage({ onGetStarted }) {
               <p className="text-[11px] text-sky-100">Barangay Tubod • Toledo City, Cebu</p>
             </div>
           </div>
-          <button
-            onClick={onGetStarted}
-            className="bg-white/20 hover:bg-white/30 text-white font-bold px-4 py-2 rounded-xl text-xs sm:text-sm transition shadow-sm border border-white/30 backdrop-blur-md flex items-center space-x-1"
-          >
-            <span>Portal Access</span>
-            <ArrowRight size={16} />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={onOpenAbout}
+              className="flex items-center space-x-1 px-3.5 py-2 rounded-xl text-xs font-bold text-white/90 hover:text-white hover:bg-white/10 transition border border-transparent hover:border-white/25"
+            >
+              <Info size={15} />
+              <span>About</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -71,12 +75,10 @@ export default function LandingPage({ onGetStarted }) {
       <section className="py-16 px-6 relative z-10 flex flex-col items-center justify-center text-center w-full">
         <div className="max-w-4xl w-full mx-auto flex flex-col items-center justify-center text-center space-y-6">
           
-          {/* Badge */}
           <span className="inline-block bg-sky-400/20 backdrop-blur-md text-sky-900 text-xs font-extrabold px-4 py-1.5 rounded-full border border-sky-300/60 uppercase tracking-widest shadow-inner text-center">
             OFFICIAL E-GOVERNANCE PORTAL
           </span>
 
-          {/* Main Heading */}
           <h2 className="text-3xl sm:text-5xl font-black leading-tight tracking-tight text-slate-900 text-center w-full">
             Seamless Barangay Services for{' '}
             <span className="block sm:inline text-transparent bg-clip-text bg-gradient-to-r from-sky-600 to-blue-700">
@@ -84,12 +86,10 @@ export default function LandingPage({ onGetStarted }) {
             </span>
           </h2>
 
-          {/* Description */}
           <p className="text-sm sm:text-base text-sky-950/90 max-w-2xl mx-auto text-center leading-relaxed font-medium">
             BaryoLink bridges the gap between residents and local barangay governance. Easily request documents, log concerns, and track approvals anytime, anywhere.
           </p>
 
-          {/* CTA Button */}
           <div className="pt-2 flex justify-center w-full">
             <button
               onClick={onGetStarted}
@@ -132,7 +132,7 @@ export default function LandingPage({ onGetStarted }) {
       </section>
 
       {/* Glass Badges */}
-      <section className="bg-white/40 backdrop-blur-xl border-y border-white/80 py-10 px-6 relative z-10">
+      <section className="bg-white/40 backdrop-blur-xl border-y border-white/80 py-10 px-6 relative z-10 mt-12">
         <div className="max-w-4xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
           <div className="flex flex-col items-center">
             <ShieldCheck className="text-sky-600 mb-2" size={28} />

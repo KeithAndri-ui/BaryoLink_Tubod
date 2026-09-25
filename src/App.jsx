@@ -4,8 +4,9 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
 
 import LandingPage from './components/LandingPage';
-import Login from './components/Login';         // <--- Import separate Login
-import Register from './components/Register';   // <--- Import separate Register
+import AboutPage from './components/AboutPage';   
+import Login from './components/Login';         
+import Register from './components/Register';   
 import Header from './components/Header';
 import Navigation from './components/Navigation';
 import DocumentRequest from './components/DocumentRequest';
@@ -15,12 +16,12 @@ import Announcements from './components/Announcements';
 import Footer from './components/Footer';
 import StaffDashboard from './components/StaffDashboard';
 
-
 export default function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showLanding, setShowLanding] = useState(true);
-  const [authView, setAuthView] = useState('login'); // <--- Track whether to show 'login' or 'register'
+  const [currentView, setCurrentView] = useState('landing'); 
+  const [authView, setAuthView] = useState('login'); 
   const [activeTab, setActiveTab] = useState('request');
   const [trackedItems, setTrackedItems] = useState([]);
 
@@ -39,6 +40,7 @@ export default function App() {
         }
         setUser(userData);
         setShowLanding(false);
+        setCurrentView('landing');
 
         // If resident, listen directly to `requests` and `complaints` collections
         if (userData.role !== 'staff' && userData.role !== 'admin') {
@@ -87,6 +89,7 @@ export default function App() {
     setUser(null);
     setTrackedItems([]);
     setShowLanding(true);
+    setCurrentView('landing');
   };
 
   const handleNewSubmission = async (item) => {
@@ -120,25 +123,37 @@ export default function App() {
     );
   }
 
+  // Handle unauthenticated views (Landing Page vs About Page vs Auth Flow)
   if (!user && showLanding) {
-    return <LandingPage onGetStarted={() => { setAuthView('login'); setShowLanding(false); }} />;
+    if (currentView === 'about') {
+      return <AboutPage onBack={() => setCurrentView('landing')} />;
+    }
+
+    return (
+      <LandingPage 
+        onGetStarted={() => { setAuthView('login'); setShowLanding(false); }} 
+        onOpenAbout={() => setCurrentView('about')} 
+      />
+    );
   }
 
-  // <--- Swapped single Auth component with conditional rendering for Login vs Register
   if (!user && !showLanding) {
     if (authView === 'login') {
       return (
         <Login 
           onLoginSuccess={(userData) => setUser(userData)} 
           onSwitchToRegister={() => setAuthView('register')}
-          onBackToHome={() => setShowLanding(true)}
+          onBackToHome={() => { setShowLanding(true); setCurrentView('landing'); }}
         />
       );
     } else {
       return (
         <Register 
           onSwitchToLogin={() => setAuthView('login')}
-          onBackToHome={() => setShowLanding(true)}
+          onBackToHome={() => { setShowLanding(true); setCurrentView('landing'); }}
+          onRegistrationComplete={() => {
+            setAuthView('login');
+          }}
         />
       );
     }

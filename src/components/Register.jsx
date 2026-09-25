@@ -8,17 +8,23 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [successModal, setSuccessModal] = useState(false); // Shows message to wait for approval
+  const [successModal, setSuccessModal] = useState(false);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
   const [lastName, setLastName] = useState('');
 
   const [phone, setPhone] = useState('');
+  const [civilStatus, setCivilStatus] = useState('Single');
+  const [birthdate, setBirthdate] = useState('');
+  const [gender, setGender] = useState('Male');
+
   const [purok, setPurok] = useState('Purok 1');
   const role = 'resident';
   
@@ -48,9 +54,24 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
     }
   };
 
+  const handlePhoneChange = (e) => {
+    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setPhone(val);
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match. Please check and try again.');
+      return;
+    }
+
+    if (phone.length !== 10) {
+      setError('Please enter a valid 10-digit Philippine mobile number (e.g., 9123456789).');
+      return;
+    }
 
     if (!idFrontPreview || !idBackPreview) {
       setError('Please upload both the Front and Back pictures of your Valid ID.');
@@ -68,6 +89,7 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
       const user = userCredential.user;
 
       const fullName = `${firstName.trim()} ${middleName ? middleName.trim() + ' ' : ''}${lastName.trim()}`;
+      const fullPhoneNumber = `+63${phone}`;
 
       const userData = {
         uid: user.uid,
@@ -76,10 +98,13 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
         lastName: lastName.trim(),
         fullName,
         email,
-        phone,
+        phone: fullPhoneNumber,
+        civilStatus,
+        birthdate,
+        gender,
         purok,
         role,
-        status: 'pending', // <--- KEY: Account starts as pending approval
+        status: 'pending',
         idFrontUrl: idFrontPreview,
         idBackUrl: idBackPreview,
         barangay: 'Barangay Tubod',
@@ -88,11 +113,7 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
       };
 
       await setDoc(doc(db, 'users', user.uid), userData);
-      
-      // Sign them out immediately so they cannot enter the dashboard while pending
       await signOut(auth);
-
-      // Show success modal informing them to wait for barangay approval
       setSuccessModal(true);
     } catch (err) {
       console.error('Registration error:', err);
@@ -113,7 +134,7 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
       <div className="absolute top-[10%] left-[15%] w-72 h-72 bg-sky-300/40 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute bottom-[10%] right-[15%] w-80 h-80 bg-blue-400/30 rounded-full blur-3xl pointer-events-none"></div>
 
-      <div className="max-w-lg w-full bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white overflow-hidden relative z-10 my-8">
+      <div className="max-w-xl w-full bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-white overflow-hidden relative z-10 my-8">
         
         {/* Header */}
         <div className="bg-gradient-to-r from-sky-800 to-blue-900 text-white p-6 text-center relative border-b border-white/10">
@@ -148,6 +169,7 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
         <div className="p-6 sm:p-8 max-h-[75vh] overflow-y-auto no-scrollbar">
           <form onSubmit={handleSubmit} className="space-y-4">
             
+            {/* Name Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-800 mb-1 uppercase">
@@ -191,20 +213,72 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
               </div>
             </div>
 
+            {/* Birthdate, Gender & Civil Status */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1 uppercase">
+                  Birthdate <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={birthdate}
+                  onChange={(e) => setBirthdate(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-sky-600 focus:outline-none transition shadow-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1 uppercase">
+                  Gender <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="w-full py-2.5 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-sky-600 focus:outline-none shadow-sm"
+                >
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1 uppercase">
+                  Civil Status <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={civilStatus}
+                  onChange={(e) => setCivilStatus(e.target.value)}
+                  className="w-full py-2.5 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-sky-600 focus:outline-none shadow-sm"
+                >
+                  <option value="Single">Single</option>
+                  <option value="Married">Married</option>
+                  <option value="Widowed">Widowed</option>
+                  <option value="Separated">Separated</option>
+                </select>
+              </div>
+            </div>
+
+            {/* PH Mobile Number & Purok */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-800 mb-1 uppercase">
-                  Contact Number <span className="text-red-600">*</span>
+                  Mobile Number <span className="text-red-600">*</span>
                 </label>
-                <div className="relative">
-                  <Phone size={16} className="absolute left-3 top-3 text-sky-700 z-10" />
+                <div className="relative flex items-center">
+                  <div className="absolute left-3 flex items-center gap-1 text-slate-600 text-xs font-bold pointer-events-none z-10">
+                    <Phone size={14} className="text-sky-700" />
+                    <span>+63</span>
+                  </div>
                   <input
                     type="tel"
                     required
-                    placeholder="09123456789"
+                    placeholder="9123456789"
+                    maxLength={10}
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full pl-9 pr-2 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-sky-600 focus:outline-none transition shadow-sm"
+                    onChange={handlePhoneChange}
+                    className="w-full pl-16 pr-3 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-sky-600 focus:outline-none transition shadow-sm tracking-wider"
                   />
                 </div>
               </div>
@@ -245,27 +319,53 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-800 mb-1 uppercase">
-                Password <span className="text-red-600">*</span>
-              </label>
-              <div className="relative">
-                <Lock size={18} className="absolute left-3 top-3 text-sky-700 z-10" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-sky-600 focus:outline-none transition shadow-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-slate-500 hover:text-sky-800 transition z-10"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1 uppercase">
+                  Password <span className="text-red-600">*</span>
+                </label>
+                <div className="relative">
+                  <Lock size={18} className="absolute left-3 top-3 text-sky-700 z-10" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-sky-600 focus:outline-none transition shadow-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-slate-500 hover:text-sky-800 transition z-10"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-800 mb-1 uppercase">
+                  Confirm Password <span className="text-red-600">*</span>
+                </label>
+                <div className="relative">
+                  <Lock size={18} className="absolute left-3 top-3 text-sky-700 z-10" />
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full pl-10 pr-10 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:ring-2 focus:ring-sky-600 focus:outline-none transition shadow-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-3 text-slate-500 hover:text-sky-800 transition z-10"
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -381,7 +481,7 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
         </div>
       )}
 
-      {/* Success / Pending Approval Notice Modal */}
+{/* Success / Pending Approval Notice Modal */}
       {successModal && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-emerald-100 text-center space-y-4">
@@ -396,7 +496,13 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
             </div>
             <button
               type="button"
-              onClick={onSwitchToLogin}
+              onClick={() => {
+                if (typeof onRegistrationComplete === 'function') {
+                  onRegistrationComplete();
+                } else {
+                  onSwitchToLogin();
+                }
+              }}
               className="w-full py-3 bg-gradient-to-r from-sky-600 to-blue-600 text-white font-bold rounded-xl text-xs transition shadow-md"
             >
               Back to Sign In
