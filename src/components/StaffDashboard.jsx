@@ -30,6 +30,9 @@ export default function StaffDashboard({ user, onLogout }) {
   // Modal State for Registered Residents
   const [showUsersModal, setShowUsersModal] = useState(false);
 
+  // Lightbox Modal State for Evidence Image Preview
+  const [selectedImage, setSelectedImage] = useState(null);
+
   // New Announcement Form State
   const [annTitle, setAnnTitle] = useState('');
   const [annContent, setAnnContent] = useState('');
@@ -516,13 +519,30 @@ export default function StaffDashboard({ user, onLogout }) {
                               Submitted: {formatDateTime(comp.createdAt || comp.timestamp || comp.dateStr)}
                             </span>
                           </div>
+
+                          {/* Evidence Thumbnail Preview */}
                           {comp.evidenceUrl && (
-                            <div className="mt-2">
-                              <a href={comp.evidenceUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-sky-700 hover:underline flex items-center gap-1">
-                                📎 View Attached Evidence Image
-                              </a>
+                            <div className="mt-3 flex items-center gap-3">
+                              <img 
+                                src={comp.evidenceUrl} 
+                                alt="Evidence Thumbnail" 
+                                onClick={() => setSelectedImage(comp.evidenceUrl)}
+                                className="w-16 h-16 object-cover rounded-xl border border-sky-300 cursor-pointer hover:scale-105 transition shadow-sm"
+                                title="Click to view full image"
+                              />
+                              <div className="flex flex-col">
+                                <span className="text-[11px] font-bold text-sky-950">Attached Evidence Photo</span>
+                                <button 
+                                  type="button"
+                                  onClick={() => setSelectedImage(comp.evidenceUrl)}
+                                  className="text-[11px] font-bold text-sky-700 hover:underline text-left mt-0.5"
+                                >
+                                  📎 Click to preview larger image
+                                </button>
+                              </div>
                             </div>
                           )}
+
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <button
@@ -708,6 +728,26 @@ export default function StaffDashboard({ user, onLogout }) {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* LIGHTBOX MODAL PREVIEW */}
+      {selectedImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div className="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-2xl p-3 shadow-2xl border border-slate-700">
+            <button 
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-4 right-4 text-white bg-red-600 hover:bg-red-700 rounded-full w-8 h-8 flex items-center justify-center font-bold z-10 shadow-md transition"
+              title="Close Preview"
+            >
+              <X size={16} />
+            </button>
+            <img 
+              src={selectedImage} 
+              alt="Enlarged Evidence Preview" 
+              className="max-w-full max-h-[80vh] object-contain rounded-xl mx-auto block shadow-inner"
+            />
           </div>
         </div>
       )}
