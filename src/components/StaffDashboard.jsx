@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, updateDoc, addDoc, deleteDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { 
   FileText, AlertTriangle, Megaphone, CheckCircle, Clock, XCircle, 
   Plus, Trash2, LogOut, ShieldAlert, CheckSquare, RefreshCcw, Users, X, User,
-  ClipboardList, AlertCircle as AlertCircleIcon, ArrowUpDown, Calendar, Check, ShieldCheck
+  ClipboardList, AlertCircle as AlertCircleIcon, ArrowUpDown, Calendar, Check, ShieldCheck, RotateCcw, Search
 } from 'lucide-react';
 
 export default function StaffDashboard({ user, onLogout }) {
@@ -13,9 +13,12 @@ export default function StaffDashboard({ user, onLogout }) {
   const [complaints, setComplaints] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [usersList, setUsersList] = useState([]);
+  const [trashItems, setTrashItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Sorting State
+  // Search & Sorting State
+  const [requestSearch, setRequestSearch] = useState('');
+  const [complaintSearch, setComplaintSearch] = useState('');
   const [requestSort, setRequestSort] = useState('newest'); // 'newest' | 'oldest' | 'alpha'
   const [complaintSort, setComplaintSort] = useState('newest'); // 'newest' | 'oldest' | 'alpha'
 
@@ -32,9 +35,16 @@ export default function StaffDashboard({ user, onLogout }) {
   });
   
   const totalRequests = requests.length;
-  const pendingRequests = requests.filter(r => !r.status || r.status === 'Pending' || r.status === 'In Review').length;
+  const pendingRequests = requests.filter(r => {
+    const status = (r.status || '').trim().toLowerCase();
+    return !status || status === 'pending' || status === 'in review';
+  }).length;
+
   const totalComplaints = complaints.length;
-  const pendingComplaints = complaints.filter(c => !c.status || c.status === 'Pending' || c.status === 'In Review').length;
+  const pendingComplaints = complaints.filter(c => {
+    const status = (c.status || '').trim().toLowerCase();
+    return status !== 'resolved';
+  }).length;
 
   // Modal State for Registered Residents Directory
   const [showUsersModal, setShowUsersModal] = useState(false);
@@ -67,14 +77,12 @@ export default function StaffDashboard({ user, onLogout }) {
   useEffect(() => {
     setLoading(true);
 
-    // Real-time listener for users
     const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
       const fetchedUsers = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
       setUsersList(fetchedUsers);
       setLoading(false);
     });
 
-    // Real-time listener for requests
     const unsubRequests = onSnapshot(collection(db, 'requests'), (snapshot) => {
       const reqList = snapshot.docs.map(docSnap => {
         const data = docSnap.data();
@@ -88,7 +96,6 @@ export default function StaffDashboard({ user, onLogout }) {
       setRequests(reqList);
     });
 
-    // Real-time listener for complaints
     const unsubComplaints = onSnapshot(collection(db, 'complaints'), (snapshot) => {
       const compList = snapshot.docs.map(docSnap => {
         const data = docSnap.data();
@@ -102,10 +109,14 @@ export default function StaffDashboard({ user, onLogout }) {
       setComplaints(compList);
     });
 
-    // Real-time listener for announcements
     const unsubAnnouncements = onSnapshot(collection(db, 'announcements'), (snapshot) => {
       const annList = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
       setAnnouncements(annList);
+    });
+
+    const unsubTrash = onSnapshot(collection(db, 'trash'), (snapshot) => {
+      const trashList = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      setTrashItems(trashList);
     });
 
     return () => {
@@ -113,32 +124,50 @@ export default function StaffDashboard({ user, onLogout }) {
       unsubRequests();
       unsubComplaints();
       unsubAnnouncements();
+      unsubTrash();
     };
   }, []);
 
-  // Sorting Helper Functions
-  const getSortedRequests = () => {
-    let sorted = [...requests];
+  // Filter and Sorting Helper Functions
+  const getFilteredAndSortedRequests = () => {
+    let filtered = requests.filter(req => {
+      const queryStr = requestSearch.toLowerCase();
+      const name = (req.fullName || '').toLowerCase();
+      const title = (req.title || '').toLowerCase();
+      const purok = (req.purok || '').toLowerCase();
+      const purpose = (req.purpose || '').toLowerCase();
+      return name.includes(queryStr) || title.includes(queryStr) || purok.includes(queryStr) || purpose.includes(queryStr);
+    });
+
     if (requestSort === 'newest') {
-      sorted.sort((a, b) => b.createdAtMs - a.createdAtMs);
+      filtered.sort((a, b) => b.createdAtMs - a.createdAtMs);
     } else if (requestSort === 'oldest') {
-      sorted.sort((a, b) => a.createdAtMs - b.createdAtMs);
+      filtered.sort((a, b) => a.createdAtMs - b.createdAtMs);
     } else if (requestSort === 'alpha') {
-      sorted.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+      filtered.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
     }
-    return sorted;
+    return filtered;
   };
 
-  const getSortedComplaints = () => {
-    let sorted = [...complaints];
+  const getFilteredAndSortedComplaints = () => {
+    let filtered = complaints.filter(comp => {
+      const queryStr = complaintSearch.toLowerCase();
+      const name = (comp.fullName || '').toLowerCase();
+      const title = (comp.title || '').toLowerCase();
+      const purok = (comp.purok || '').toLowerCase();
+      const details = (comp.details || comp.description || '').toLowerCase();
+      const type = (comp.complaintType || '').toLowerCase();
+      return name.includes(queryStr) || title.includes(queryStr) || purok.includes(queryStr) || details.includes(queryStr) || type.includes(queryStr);
+    });
+
     if (complaintSort === 'newest') {
-      sorted.sort((a, b) => b.createdAtMs - a.createdAtMs);
+      filtered.sort((a, b) => b.createdAtMs - a.createdAtMs);
     } else if (complaintSort === 'oldest') {
-      sorted.sort((a, b) => a.createdAtMs - b.createdAtMs);
+      filtered.sort((a, b) => a.createdAtMs - b.createdAtMs);
     } else if (complaintSort === 'alpha') {
-      sorted.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+      filtered.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
     }
-    return sorted;
+    return filtered;
   };
 
   // Format timestamp helper for display
@@ -184,6 +213,42 @@ export default function StaffDashboard({ user, onLogout }) {
       await updateDoc(doc(db, 'users', userId), { status: newStatus });
     } catch (err) {
       console.error('Error updating user account status:', err);
+    }
+  };
+
+  // Move Item to Trash Bin
+  const handleMoveToTrash = async (item, sourceCollection) => {
+    try {
+      await addDoc(collection(db, 'trash'), {
+        originalId: item.id,
+        collectionName: sourceCollection,
+        itemData: item,
+        deletedAt: new Date().toISOString(),
+        deletedAtMs: Date.now()
+      });
+      await deleteDoc(doc(db, sourceCollection, item.id));
+    } catch (err) {
+      console.error('Error moving item to trash:', err);
+    }
+  };
+
+  // Restore Item from Trash Bin
+  const handleRestoreFromTrash = async (trashId, originalCollection, itemData) => {
+    try {
+      const { id, createdAtMs, ...dataToRestore } = itemData;
+      await setDoc(doc(db, originalCollection, itemData.id), dataToRestore);
+      await deleteDoc(doc(db, 'trash', trashId));
+    } catch (err) {
+      console.error('Error restoring item:', err);
+    }
+  };
+
+  // Permanently Delete Item from Trash Bin
+  const handlePermanentDelete = async (trashId) => {
+    try {
+      await deleteDoc(doc(db, 'trash', trashId));
+    } catch (err) {
+      console.error('Error deleting permanently:', err);
     }
   };
 
@@ -353,6 +418,15 @@ export default function StaffDashboard({ user, onLogout }) {
               <Megaphone size={16} />
               <span>Announcements</span>
             </button>
+            <button
+              onClick={() => setActiveTab('trash')}
+              className={`py-2.5 px-5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
+                activeTab === 'trash' ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-sky-600/30' : 'text-sky-950 hover:bg-white/60'
+              }`}
+            >
+              <Trash2 size={16} />
+              <span>Trash Bin ({trashItems.length})</span>
+            </button>
           </div>
 
           <button
@@ -468,23 +542,38 @@ export default function StaffDashboard({ user, onLogout }) {
                     <p className="text-xs text-sky-900/90 font-medium">Review, sort, and update status for clearances, residency, and certificates.</p>
                   </div>
                   
-                  <div className="flex items-center gap-2 bg-white/70 backdrop-blur-md border border-sky-200/90 px-3.5 py-2 rounded-xl shadow-inner">
-                    <ArrowUpDown size={14} className="text-sky-700" />
-                    <span className="text-[11px] font-bold text-sky-900">Sort by:</span>
-                    <select
-                      value={requestSort}
-                      onChange={(e) => setRequestSort(e.target.value)}
-                      className="bg-transparent text-xs font-extrabold text-slate-900 focus:outline-none cursor-pointer"
-                    >
-                      <option value="newest">Newest Time</option>
-                      <option value="oldest">Oldest Time</option>
-                      <option value="alpha">Alphabetical (A–Z Name)</option>
-                    </select>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Search Bar */}
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-3 text-sky-700" />
+                      <input
+                        type="text"
+                        placeholder="Search requests..."
+                        value={requestSearch}
+                        onChange={(e) => setRequestSearch(e.target.value)}
+                        className="pl-9 pr-3 py-2 bg-white/70 backdrop-blur-md border border-sky-200/90 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-sky-500 focus:outline-none shadow-inner text-slate-900 placeholder:text-slate-500 w-48 sm:w-60"
+                      />
+                    </div>
+
+                    {/* Sorting dropdown */}
+                    <div className="flex items-center gap-2 bg-white/70 backdrop-blur-md border border-sky-200/90 px-3 py-2 rounded-xl shadow-inner">
+                      <ArrowUpDown size={14} className="text-sky-700" />
+                      <span className="text-[11px] font-bold text-sky-900">Sort:</span>
+                      <select
+                        value={requestSort}
+                        onChange={(e) => setRequestSort(e.target.value)}
+                        className="bg-transparent text-xs font-extrabold text-slate-900 focus:outline-none cursor-pointer"
+                      >
+                        <option value="newest">Newest Time</option>
+                        <option value="oldest">Oldest Time</option>
+                        <option value="alpha">Alphabetical (A–Z)</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                {requests.length === 0 ? (
-                  <p className="text-center py-10 text-xs text-sky-900/80 font-medium">No document requests submitted yet.</p>
+                {getFilteredAndSortedRequests().length === 0 ? (
+                  <p className="text-center py-10 text-xs text-sky-900/80 font-medium">No document requests found matching your search.</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
@@ -500,7 +589,7 @@ export default function StaffDashboard({ user, onLogout }) {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-sky-200/60 font-medium">
-                        {getSortedRequests().map(req => (
+                        {getFilteredAndSortedRequests().map(req => (
                           <tr key={req.id} className="hover:bg-white/60 transition">
                             <td className="p-3">
                               <div className="font-bold text-slate-900">{req.fullName || 'Unknown Resident'}</div>
@@ -523,7 +612,7 @@ export default function StaffDashboard({ user, onLogout }) {
                                 {req.status || 'Pending'}
                               </span>
                             </td>
-                            <td className="p-3 text-right space-x-1 whitespace-nowrap">
+                            <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
                               <button
                                 onClick={() => handleUpdateReqStatus(req.id, 'Ready for Pickup')}
                                 className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
@@ -535,6 +624,13 @@ export default function StaffDashboard({ user, onLogout }) {
                                 className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
                               >
                                 Reject
+                              </button>
+                              <button
+                                onClick={() => handleMoveToTrash(req, 'requests')}
+                                className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
+                                title="Remove / Move to Trash"
+                              >
+                                <Trash2 size={13} />
                               </button>
                             </td>
                           </tr>
@@ -554,26 +650,41 @@ export default function StaffDashboard({ user, onLogout }) {
                     <p className="text-xs text-sky-900/90 font-medium">Live reports filed by residents with submission time sorting and alphabetical filtering.</p>
                   </div>
 
-                  <div className="flex items-center gap-2 bg-white/70 backdrop-blur-md border border-sky-200/90 px-3.5 py-2 rounded-xl shadow-inner">
-                    <ArrowUpDown size={14} className="text-sky-700" />
-                    <span className="text-[11px] font-bold text-sky-900">Sort by:</span>
-                    <select
-                      value={complaintSort}
-                      onChange={(e) => setComplaintSort(e.target.value)}
-                      className="bg-transparent text-xs font-extrabold text-slate-900 focus:outline-none cursor-pointer"
-                    >
-                      <option value="newest">Newest Time</option>
-                      <option value="oldest">Oldest Time</option>
-                      <option value="alpha">Alphabetical (A–Z Name)</option>
-                    </select>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Search Bar */}
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-3 text-sky-700" />
+                      <input
+                        type="text"
+                        placeholder="Search complaints..."
+                        value={complaintSearch}
+                        onChange={(e) => setComplaintSearch(e.target.value)}
+                        className="pl-9 pr-3 py-2 bg-white/70 backdrop-blur-md border border-sky-200/90 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-sky-500 focus:outline-none shadow-inner text-slate-900 placeholder:text-slate-500 w-48 sm:w-60"
+                      />
+                    </div>
+
+                    {/* Sorting dropdown */}
+                    <div className="flex items-center gap-2 bg-white/70 backdrop-blur-md border border-sky-200/90 px-3 py-2 rounded-xl shadow-inner">
+                      <ArrowUpDown size={14} className="text-sky-700" />
+                      <span className="text-[11px] font-bold text-sky-900">Sort:</span>
+                      <select
+                        value={complaintSort}
+                        onChange={(e) => setComplaintSort(e.target.value)}
+                        className="bg-transparent text-xs font-extrabold text-slate-900 focus:outline-none cursor-pointer"
+                      >
+                        <option value="newest">Newest Time</option>
+                        <option value="oldest">Oldest Time</option>
+                        <option value="alpha">Alphabetical (A–Z)</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
-                {complaints.length === 0 ? (
-                  <p className="text-center py-10 text-xs text-sky-900/80 font-medium">No complaints filed yet.</p>
+                {getFilteredAndSortedComplaints().length === 0 ? (
+                  <p className="text-center py-10 text-xs text-sky-900/80 font-medium">No complaints found matching your search.</p>
                 ) : (
                   <div className="space-y-3">
-                    {getSortedComplaints().map(comp => (
+                    {getFilteredAndSortedComplaints().map(comp => (
                       <div key={comp.id} className={glassCardStyle}>
                         <div className="space-y-1.5">
                           <div className="flex items-center gap-2 flex-wrap">
@@ -632,6 +743,13 @@ export default function StaffDashboard({ user, onLogout }) {
                             className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-[11px] transition shadow-sm"
                           >
                             Resolve
+                          </button>
+                          <button
+                            onClick={() => handleMoveToTrash(comp, 'complaints')}
+                            className="p-2 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl text-[11px] transition shadow-sm"
+                            title="Remove / Move to Trash"
+                          >
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </div>
@@ -724,6 +842,56 @@ export default function StaffDashboard({ user, onLogout }) {
                   )}
                 </div>
 
+              </div>
+            )}
+
+            {activeTab === 'trash' && (
+              <div className={glassContainerStyle}>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-sky-200/80">
+                  <div>
+                    <h2 className="text-base font-black text-sky-950">Trash Bin (Removed Records)</h2>
+                    <p className="text-xs text-sky-900/90 font-medium">Review, restore, or permanently delete removed document requests and complaints.</p>
+                  </div>
+                </div>
+
+                {trashItems.length === 0 ? (
+                  <p className="text-center py-12 text-xs text-sky-900/80 font-medium">Trash bin is currently empty.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {trashItems.map(item => (
+                      <div key={item.id} className={glassCardStyle}>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-0.5 bg-red-500/20 border border-red-300/60 text-red-900 rounded-md text-[10px] font-black uppercase">
+                              {item.collectionName === 'requests' ? 'Document Request' : 'Complaint / Blotter'}
+                            </span>
+                            <span className="font-bold text-xs text-slate-900">{item.itemData?.title || item.itemData?.complaintType || 'Record'}</span>
+                          </div>
+                          <p className="text-xs text-sky-950">{item.itemData?.purpose || item.itemData?.details || item.itemData?.description || 'No additional details'}</p>
+                          <p className="text-[10px] text-sky-900/80 font-medium">
+                            Deleted by staff • <strong className="text-slate-900">{item.itemData?.fullName || 'Resident'}</strong>
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => handleRestoreFromTrash(item.id, item.collectionName, item.itemData)}
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-[11px] transition shadow-sm flex items-center gap-1"
+                          >
+                            <RotateCcw size={13} />
+                            <span>Restore</span>
+                          </button>
+                          <button
+                            onClick={() => handlePermanentDelete(item.id)}
+                            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-[11px] transition shadow-sm flex items-center gap-1"
+                          >
+                            <Trash2 size={13} />
+                            <span>Delete Permanently</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>
