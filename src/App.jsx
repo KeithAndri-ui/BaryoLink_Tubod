@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { auth, db } from './firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, onSnapshot, addDoc } from 'firebase/firestore'; 
 
 import LandingPage from './components/LandingPage';
 import AboutPage from './components/AboutPage';   
@@ -15,6 +15,7 @@ import ProgressTracker from './components/ProgressTracker';
 import Announcements from './components/Announcements';
 import Footer from './components/Footer';
 import StaffDashboard from './components/StaffDashboard';
+import AdminDashboard from './components/AdminDashboard';
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -24,8 +25,9 @@ export default function App() {
   const [authView, setAuthView] = useState('login'); 
   const [activeTab, setActiveTab] = useState('request');
   const [trackedItems, setTrackedItems] = useState([]);
+  const [authPendingMessage, setAuthPendingMessage] = useState('');
 
-  // Monitor Firebase Auth session state & listen to both requests & complaints in real-time
+  // Monitor Firebase Auth session state & verify approval status
   useEffect(() => {
     let unsubRequests = null;
     let unsubComplaints = null;
@@ -33,16 +35,28 @@ export default function App() {
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-        let userData = { uid: currentUser.uid, email: currentUser.email, role: 'resident' };
+        let userData = { uid: currentUser.uid, email: currentUser.email, role: 'resident', status: 'pending' };
         
         if (userDoc.exists()) {
           userData = userDoc.data();
         }
+
+        // Check if the user is a resident whose account is still pending staff approval
+        if (userData.role === 'resident' && (!userData.status || userData.status.toLowerCase() === 'pending')) {
+          await signOut(auth);
+          setUser(null);
+          setAuthPendingMessage('Your account has been successfully registered, but it is currently pending approval by Barangay Tubod officials. Please wait for verification before logging in.');
+          setAuthView('login');
+          setShowLanding(false);
+          setLoading(false);
+          return;
+        }
+
         setUser(userData);
         setShowLanding(false);
         setCurrentView('landing');
 
-        // If resident, listen directly to `requests` and `complaints` collections
+        // If resident and approved, listen directly to `requests` and `complaints` collections
         if (userData.role !== 'staff' && userData.role !== 'admin') {
           const reqQuery = query(collection(db, 'requests'), where('userId', '==', currentUser.uid));
           const compQuery = query(collection(db, 'complaints'), where('userId', '==', currentUser.uid));
@@ -141,8 +155,12 @@ export default function App() {
     if (authView === 'login') {
       return (
         <Login 
+          initialPendingMessage={authPendingMessage}
           onLoginSuccess={(userData) => setUser(userData)} 
-          onSwitchToRegister={() => setAuthView('register')}
+          onSwitchToRegister={() => {
+            setAuthPendingMessage('');
+            setAuthView('register');
+          }}
           onBackToHome={() => { setShowLanding(true); setCurrentView('landing'); }}
         />
       );
@@ -151,7 +169,8 @@ export default function App() {
         <Register 
           onSwitchToLogin={() => setAuthView('login')}
           onBackToHome={() => { setShowLanding(true); setCurrentView('landing'); }}
-          onRegistrationComplete={() => {
+          onRegistrationComplete={(msg) => {
+            setAuthPendingMessage(msg || 'Your account has been successfully registered, but it is currently pending approval by Barangay Tubod officials. Please wait for verification.');
             setAuthView('login');
           }}
         />
@@ -159,7 +178,13 @@ export default function App() {
     }
   }
 
-  if (user && (user.role === 'staff' || user.role === 'admin')) {
+  // Dedicated routes for Admin role
+  if (user && user.role === 'admin') {
+    return <AdminDashboard currentUser={user} onLogout={handleSignOut} />;
+  }
+
+  // Dedicated routes for Staff role
+  if (user && user.role === 'staff') {
     return <StaffDashboard user={user} onLogout={handleSignOut} />;
   }
 

@@ -4,9 +4,10 @@ import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { LogIn, Mail, Lock, ArrowLeft, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
-export default function Login({ onLoginSuccess, onSwitchToRegister, onBackToHome }) {
+export default function Login({ onLoginSuccess, onSwitchToRegister, onBackToHome, initialPendingMessage = '' }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [pendingMessage, setPendingMessage] = useState(initialPendingMessage);
   const [showPassword, setShowPassword] = useState(false);
 
   const [email, setEmail] = useState('');
@@ -15,23 +16,21 @@ export default function Login({ onLoginSuccess, onSwitchToRegister, onBackToHome
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    setPendingMessage('');
     setLoading(true);
 
     try {
-      // 1. Authenticate with Firebase Auth
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Fetch user document from Firestore to check status and role
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       
       if (userDoc.exists()) {
         const userData = userDoc.data();
 
-        // Check if account is pending approval (skip check if they are an admin/official)
         if (userData.role === 'resident' && userData.status === 'pending') {
-          setError('Your account is still pending approval from Barangay Tubod officials. Please wait for confirmation.');
-          await signOut(auth); // Log them out immediately
+          setPendingMessage('Your account has been successfully registered, but it is currently pending approval by Barangay Tubod officials. Please wait for verification.');
+          await signOut(auth);
           setLoading(false);
           return;
         }
@@ -45,7 +44,6 @@ export default function Login({ onLoginSuccess, onSwitchToRegister, onBackToHome
 
         onLoginSuccess(userData);
       } else {
-        // Fallback if user doc doesn't exist yet
         onLoginSuccess({
           uid: user.uid,
           email: user.email,
@@ -95,14 +93,23 @@ export default function Login({ onLoginSuccess, onSwitchToRegister, onBackToHome
           </p>
         </div>
 
-        {error && (
-          <div className="mx-6 mt-6 p-3 bg-red-500/10 border-l-4 border-red-500 text-red-700 text-xs rounded-xl backdrop-blur-md font-medium flex items-center gap-2 shadow-sm">
-            <AlertCircle size={16} className="shrink-0 text-red-600" />
-            <span>{error}</span>
-          </div>
-        )}
+        <div className="p-6 sm:p-8 space-y-4">
+          {/* Error Alert Box */}
+          {error && (
+            <div className="p-3 bg-red-500/10 border-l-4 border-red-500 text-red-700 text-xs rounded-xl backdrop-blur-md font-medium flex items-center gap-2 shadow-sm">
+              <AlertCircle size={16} className="shrink-0 text-red-600" />
+              <span>{error}</span>
+            </div>
+          )}
 
-        <div className="p-6 sm:p-8">
+          {/* Pending Account Notice Box */}
+          {pendingMessage && (
+            <div className="p-3 bg-amber-500/10 border-l-4 border-amber-500 text-amber-800 text-xs rounded-xl font-medium flex items-start gap-2 shadow-sm">
+              <span className="text-base shrink-0">⚠️</span>
+              <p>{pendingMessage}</p>
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-slate-800 mb-1 uppercase">

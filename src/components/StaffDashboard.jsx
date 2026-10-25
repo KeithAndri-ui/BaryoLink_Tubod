@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, addDoc, deleteDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { 
   FileText, AlertTriangle, Megaphone, CheckCircle, Clock, XCircle, 
   Plus, Trash2, LogOut, ShieldAlert, CheckSquare, RefreshCcw, Users, X, User,
-  ClipboardList, AlertCircle, ArrowUpDown, Calendar, Check, ShieldCheck
+  ClipboardList, AlertCircle as AlertCircleIcon, ArrowUpDown, Calendar, Check, ShieldCheck
 } from 'lucide-react';
 
 export default function StaffDashboard({ user, onLogout }) {
-  const [activeTab, setActiveTab] = useState('requests');
+  const [activeTab, setActiveTab] = useState('approvals');
   const [requests, setRequests] = useState([]);
   const [complaints, setComplaints] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
@@ -19,11 +19,18 @@ export default function StaffDashboard({ user, onLogout }) {
   const [requestSort, setRequestSort] = useState('newest'); // 'newest' | 'oldest' | 'alpha'
   const [complaintSort, setComplaintSort] = useState('newest'); // 'newest' | 'oldest' | 'alpha'
 
-  // Filtered lists and metrics (excluding admins/staff from residents count)
-  const residentsList = usersList.filter(u => u.role !== 'staff' && u.role !== 'admin');
-  const pendingUsersList = residentsList.filter(u => !u.status || u.status === 'Pending' || u.status === 'pending');
+  // Filtered lists and metrics (Robustly excluding staff and admin)
+  const residentsList = usersList.filter(u => {
+    const role = (u.role || '').toLowerCase();
+    const userType = (u.userType || '').toLowerCase();
+    return role !== 'staff' && role !== 'admin' && userType !== 'staff' && userType !== 'admin';
+  });
+
+  const pendingUsersList = residentsList.filter(u => {
+    const status = (u.status || '').trim().toLowerCase();
+    return !status || status === 'pending' || status === 'unverified' || status !== 'approved';
+  });
   
-  const totalResidents = residentsList.filter(u => u.status === 'Approved' || u.status === 'approved').length;
   const totalRequests = requests.length;
   const pendingRequests = requests.filter(r => !r.status || r.status === 'Pending' || r.status === 'In Review').length;
   const totalComplaints = complaints.length;
@@ -32,7 +39,7 @@ export default function StaffDashboard({ user, onLogout }) {
   // Modal State for Registered Residents Directory
   const [showUsersModal, setShowUsersModal] = useState(false);
 
-  // Lightbox Modal State for Evidence Image Preview
+  // Lightbox Modal State for Evidence/ID Image Preview
   const [selectedImage, setSelectedImage] = useState(null);
 
   // New Announcement Form State
@@ -56,55 +63,58 @@ export default function StaffDashboard({ user, onLogout }) {
     return isNaN(parsed) ? 0 : parsed;
   };
 
-  // Fetch all data on load
+  // Fetch all data on load with real-time listeners
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
     setLoading(true);
-    try {
-      // Fetch Document Requests
-      const reqSnap = await getDocs(collection(db, 'requests'));
-      const reqList = reqSnap.docs.map(doc => {
-        const data = doc.data();
+
+    // Real-time listener for users
+    const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const fetchedUsers = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+      setUsersList(fetchedUsers);
+      setLoading(false);
+    });
+
+    // Real-time listener for requests
+    const unsubRequests = onSnapshot(collection(db, 'requests'), (snapshot) => {
+      const reqList = snapshot.docs.map(docSnap => {
+        const data = docSnap.data();
         const rawTime = data.createdAt || data.timestamp;
         return { 
-          id: doc.id, 
+          id: docSnap.id, 
           ...data,
           createdAtMs: parseTimestampToMs(rawTime)
         };
       });
       setRequests(reqList);
+    });
 
-      // Fetch Complaints
-      const compSnap = await getDocs(collection(db, 'complaints'));
-      const compList = compSnap.docs.map(doc => {
-        const data = doc.data();
+    // Real-time listener for complaints
+    const unsubComplaints = onSnapshot(collection(db, 'complaints'), (snapshot) => {
+      const compList = snapshot.docs.map(docSnap => {
+        const data = docSnap.data();
         const rawTime = data.createdAt || data.timestamp || data.dateStr;
         return { 
-          id: doc.id, 
+          id: docSnap.id, 
           ...data,
           createdAtMs: parseTimestampToMs(rawTime)
         };
       });
       setComplaints(compList);
+    });
 
-      // Fetch Announcements
-      const annSnap = await getDocs(collection(db, 'announcements'));
-      const annList = annSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // Real-time listener for announcements
+    const unsubAnnouncements = onSnapshot(collection(db, 'announcements'), (snapshot) => {
+      const annList = snapshot.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
       setAnnouncements(annList);
+    });
 
-      // Fetch Registered Users
-      const usersSnap = await getDocs(collection(db, 'users'));
-      const fetchedUsers = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setUsersList(fetchedUsers);
-    } catch (err) {
-      console.error('Error fetching staff data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => {
+      unsubUsers();
+      unsubRequests();
+      unsubComplaints();
+      unsubAnnouncements();
+    };
+  }, []);
 
   // Sorting Helper Functions
   const getSortedRequests = () => {
@@ -154,7 +164,6 @@ export default function StaffDashboard({ user, onLogout }) {
   const handleUpdateReqStatus = async (id, newStatus) => {
     try {
       await updateDoc(doc(db, 'requests', id), { status: newStatus });
-      setRequests(requests.map(r => r.id === id ? { ...r, status: newStatus } : r));
     } catch (err) {
       console.error('Error updating request status:', err);
     }
@@ -164,7 +173,6 @@ export default function StaffDashboard({ user, onLogout }) {
   const handleUpdateComplaintStatus = async (id, newStatus) => {
     try {
       await updateDoc(doc(db, 'complaints', id), { status: newStatus });
-      setComplaints(complaints.map(c => c.id === id ? { ...c, status: newStatus } : c));
     } catch (err) {
       console.error('Error updating complaint status:', err);
     }
@@ -174,7 +182,6 @@ export default function StaffDashboard({ user, onLogout }) {
   const handleUpdateUserAccountStatus = async (userId, newStatus) => {
     try {
       await updateDoc(doc(db, 'users', userId), { status: newStatus });
-      setUsersList(usersList.map(u => u.id === userId ? { ...u, status: newStatus } : u));
     } catch (err) {
       console.error('Error updating user account status:', err);
     }
@@ -193,8 +200,7 @@ export default function StaffDashboard({ user, onLogout }) {
         dateStr: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
         createdAt: new Date().toISOString()
       };
-      const docRef = await addDoc(collection(db, 'announcements'), newAnn);
-      setAnnouncements([{ id: docRef.id, ...newAnn }, ...announcements]);
+      await addDoc(collection(db, 'announcements'), newAnn);
       setAnnTitle('');
       setAnnContent('');
     } catch (err) {
@@ -206,13 +212,11 @@ export default function StaffDashboard({ user, onLogout }) {
   const handleDeleteAnnouncement = async (id) => {
     try {
       await deleteDoc(doc(db, 'announcements', id));
-      setAnnouncements(announcements.filter(a => a.id !== id));
     } catch (err) {
       console.error('Error deleting announcement:', err);
     }
   };
 
-  // Reusable frosted glass styles matched precisely with the DocumentRequest component colorway
   const glassContainerStyle = "relative bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 backdrop-blur-xl border border-white/95 shadow-2xl shadow-sky-900/15 rounded-3xl p-6 space-y-4 overflow-hidden";
   const glassCardStyle = "p-4 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/90 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 transition hover:bg-white/90";
   const glassInputStyle = "w-full px-3.5 py-2.5 bg-white/70 backdrop-blur-md border border-sky-200/90 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-sky-500 focus:outline-none shadow-inner text-slate-900 placeholder:text-slate-500";
@@ -220,7 +224,6 @@ export default function StaffDashboard({ user, onLogout }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-sky-50 to-blue-100 text-slate-800 pb-12 relative overflow-x-hidden">
       
-      {/* Ambient Background Glow Orbs */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-sky-400/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute top-1/3 -left-20 w-80 h-80 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
 
@@ -246,14 +249,6 @@ export default function StaffDashboard({ user, onLogout }) {
               <p className="text-xs font-bold text-white">{user?.fullName || user?.email}</p>
               <p className="text-[10px] text-sky-100">Staff Official</p>
             </div>
-            <button
-              onClick={fetchDashboardData}
-              className="px-3 py-2 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 border border-white/30 shadow-sm backdrop-blur-md"
-              title="Refresh Data"
-            >
-              <RefreshCcw size={13} />
-              <span>Refresh</span>
-            </button>
             <button
               onClick={onLogout}
               className="px-3 py-2 bg-red-600/90 hover:bg-red-600 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 border border-red-400/30 shadow-sm"
@@ -312,7 +307,7 @@ export default function StaffDashboard({ user, onLogout }) {
               <p className="text-[10px] text-red-700 font-medium">Needs review</p>
             </div>
             <div className="w-12 h-12 bg-red-400/30 border border-red-300/60 text-red-900 rounded-2xl flex items-center justify-center shadow-inner backdrop-blur-md">
-              <AlertCircle size={22} className="text-red-700" />
+              <AlertCircleIcon size={22} className="text-red-700" />
             </div>
           </div>
 
@@ -321,7 +316,6 @@ export default function StaffDashboard({ user, onLogout }) {
         {/* Navigation & Separate Residents Action Bar */}
         <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
           
-          {/* Main Navigation Tabs */}
           <div className="flex flex-wrap bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 backdrop-blur-xl p-1.5 rounded-2xl border border-white/95 shadow-xl shadow-sky-900/10">
             <button
               onClick={() => setActiveTab('approvals')}
@@ -361,7 +355,6 @@ export default function StaffDashboard({ user, onLogout }) {
             </button>
           </div>
 
-          {/* Separated Registered Residents Button */}
           <button
             onClick={() => setShowUsersModal(true)}
             className="py-3 px-5 bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 hover:from-white hover:to-sky-100 text-sky-950 border border-white/95 shadow-xl shadow-sky-900/10 rounded-2xl text-xs font-extrabold transition flex items-center justify-center gap-2.5 backdrop-blur-xl group"
@@ -378,13 +371,12 @@ export default function StaffDashboard({ user, onLogout }) {
           <div className="text-center py-20 text-sky-900 font-semibold text-sm">Loading records from Firebase...</div>
         ) : (
           <>
-            {/* TAB 0: PENDING ACCOUNT APPROVALS */}
             {activeTab === 'approvals' && (
               <div className={glassContainerStyle}>
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-sky-200/80">
                   <div>
                     <h2 className="text-base font-black text-sky-950">Pending Resident Account Approvals</h2>
-                    <p className="text-xs text-sky-900/90 font-medium">Verify newly registered residents before granting full access to portal features.</p>
+                    <p className="text-xs text-sky-900/90 font-medium">Verify newly registered residents and inspect their submitted Valid IDs before granting full access.</p>
                   </div>
                 </div>
 
@@ -398,6 +390,7 @@ export default function StaffDashboard({ user, onLogout }) {
                           <th className="p-3">Full Name</th>
                           <th className="p-3">Email Address</th>
                           <th className="p-3">Purok / Location</th>
+                          <th className="p-3">Valid ID Verification</th>
                           <th className="p-3">Account Status</th>
                           <th className="p-3 text-right">Actions</th>
                         </tr>
@@ -413,6 +406,32 @@ export default function StaffDashboard({ user, onLogout }) {
                             </td>
                             <td className="p-3 text-sky-950">{u.email || 'No email provided'}</td>
                             <td className="p-3 text-sky-950 font-semibold">{u.purok || 'N/A'}</td>
+                            <td className="p-3">
+                              <div className="flex items-center gap-1.5">
+                                {u.idFrontUrl ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedImage(u.idFrontUrl)}
+                                    className="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
+                                  >
+                                    View Front ID
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400">No Front ID</span>
+                                )}
+                                {u.idBackUrl ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedImage(u.idBackUrl)}
+                                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
+                                  >
+                                    View Back ID
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] text-slate-400">No Back ID</span>
+                                )}
+                              </div>
+                            </td>
                             <td className="p-3">
                               <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider inline-block bg-amber-500/20 text-amber-900 border border-amber-400/40">
                                 Pending Approval
@@ -441,18 +460,14 @@ export default function StaffDashboard({ user, onLogout }) {
               </div>
             )}
 
-            {/* TAB 1: DOCUMENT REQUESTS */}
             {activeTab === 'requests' && (
               <div className={glassContainerStyle}>
-                
-                {/* Header & Sorting Bar */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-sky-200/80">
                   <div>
                     <h2 className="text-base font-black text-sky-950">Resident Document Requests</h2>
                     <p className="text-xs text-sky-900/90 font-medium">Review, sort, and update status for clearances, residency, and certificates.</p>
                   </div>
                   
-                  {/* Filter / Sort Control */}
                   <div className="flex items-center gap-2 bg-white/70 backdrop-blur-md border border-sky-200/90 px-3.5 py-2 rounded-xl shadow-inner">
                     <ArrowUpDown size={14} className="text-sky-700" />
                     <span className="text-[11px] font-bold text-sky-900">Sort by:</span>
@@ -531,18 +546,14 @@ export default function StaffDashboard({ user, onLogout }) {
               </div>
             )}
 
-            {/* TAB 2: COMPLAINTS */}
             {activeTab === 'complaints' && (
               <div className={glassContainerStyle}>
-                
-                {/* Header & Sorting Bar */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-sky-200/80">
                   <div>
                     <h2 className="text-base font-black text-sky-950">Resident Blotter & Complaints</h2>
                     <p className="text-xs text-sky-900/90 font-medium">Live reports filed by residents with submission time sorting and alphabetical filtering.</p>
                   </div>
 
-                  {/* Filter / Sort Control */}
                   <div className="flex items-center gap-2 bg-white/70 backdrop-blur-md border border-sky-200/90 px-3.5 py-2 rounded-xl shadow-inner">
                     <ArrowUpDown size={14} className="text-sky-700" />
                     <span className="text-[11px] font-bold text-sky-900">Sort by:</span>
@@ -571,7 +582,7 @@ export default function StaffDashboard({ user, onLogout }) {
                             </span>
                             <span className="font-bold text-xs text-slate-900">{comp.title}</span>
                             <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase border ${
-                              comp.status === 'Resolved' ? 'bg-emerald-500/20 text-emerald-900 border-emerald-400/40' : 'bg-amber-500/20 text-amber-900 border-amber-400/40'
+                              comp.status === 'Resolved' ? 'bg-emerald-500/20 text-emerald-900 border-emerald-400/40' : 'bg-amber-500/20 text-amber-900 border border-amber-400/40'
                             }`}>
                               {comp.status || 'In Review'}
                             </span>
@@ -586,7 +597,6 @@ export default function StaffDashboard({ user, onLogout }) {
                             </span>
                           </div>
 
-                          {/* Evidence Thumbnail Preview */}
                           {comp.evidenceUrl && (
                             <div className="mt-3 flex items-center gap-3">
                               <img 
@@ -631,11 +641,9 @@ export default function StaffDashboard({ user, onLogout }) {
               </div>
             )}
 
-            {/* TAB 3: ANNOUNCEMENTS */}
             {activeTab === 'announcements' && (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                {/* Create Announcement Form */}
                 <div className={`${glassContainerStyle} lg:col-span-1`}>
                   <h3 className="text-sm font-black text-sky-950 flex items-center gap-2">
                     <Plus size={16} className="text-sky-700" />
@@ -686,7 +694,6 @@ export default function StaffDashboard({ user, onLogout }) {
                   </form>
                 </div>
 
-                {/* Announcement List */}
                 <div className={`${glassContainerStyle} lg:col-span-2`}>
                   <h3 className="text-sm font-black text-sky-950">Active Barangay Announcements</h3>
                   
@@ -724,12 +731,10 @@ export default function StaffDashboard({ user, onLogout }) {
 
       </main>
 
-      {/* REGISTERED RESIDENTS DIRECTORY MODAL */}
       {showUsersModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-md flex items-center justify-center p-4">
           <div className="relative bg-gradient-to-br from-white/95 via-sky-100/90 to-blue-200/80 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/95 w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             
-            {/* Modal Header */}
             <div className="px-6 py-4 bg-gradient-to-r from-sky-600 to-blue-600 text-white flex justify-between items-center border-b border-white/20">
               <div className="flex items-center space-x-2.5">
                 <Users size={20} className="text-sky-100" />
@@ -743,9 +748,11 @@ export default function StaffDashboard({ user, onLogout }) {
               </button>
             </div>
 
-            {/* Modal Content / Users Table */}
             <div className="p-6 overflow-y-auto flex-1">
-              {residentsList.filter(u => u.status === 'Approved' || u.status === 'approved').length === 0 ? (
+              {residentsList.filter(u => {
+                const status = (u.status || '').toLowerCase();
+                return status === 'approved';
+              }).length === 0 ? (
                 <p className="text-center py-12 text-xs text-sky-900/80 font-medium">No approved residents found in database.</p>
               ) : (
                 <div className="overflow-x-auto">
@@ -760,7 +767,10 @@ export default function StaffDashboard({ user, onLogout }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-sky-200/60 font-medium">
-                      {residentsList.filter(u => u.status === 'Approved' || u.status === 'approved').map(u => (
+                      {residentsList.filter(u => {
+                        const status = (u.status || '').toLowerCase();
+                        return status === 'approved';
+                      }).map(u => (
                         <tr key={u.id} className="hover:bg-white/60 transition">
                           <td className="p-3">
                             <div className="font-bold text-slate-900 flex items-center gap-1.5">
@@ -784,7 +794,6 @@ export default function StaffDashboard({ user, onLogout }) {
               )}
             </div>
 
-            {/* Modal Footer */}
             <div className="px-6 py-3 bg-white/50 border-t border-sky-200/85 flex justify-end">
               <button
                 onClick={() => setShowUsersModal(false)}
@@ -798,7 +807,6 @@ export default function StaffDashboard({ user, onLogout }) {
         </div>
       )}
 
-      {/* LIGHTBOX MODAL PREVIEW */}
       {selectedImage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in duration-200">
           <div className="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-2xl p-3 shadow-2xl border border-slate-700">
@@ -811,7 +819,7 @@ export default function StaffDashboard({ user, onLogout }) {
             </button>
             <img 
               src={selectedImage} 
-              alt="Enlarged Evidence Preview" 
+              alt="Enlarged ID / Evidence Preview" 
               className="max-w-full max-h-[80vh] object-contain rounded-xl mx-auto block shadow-inner"
             />
           </div>

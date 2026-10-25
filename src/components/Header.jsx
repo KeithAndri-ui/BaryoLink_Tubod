@@ -1,16 +1,28 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, User, LogOut, FileText, AlertTriangle, X, Shield, MapPin, Mail, Calendar } from 'lucide-react';
+import { db } from '../firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+import { Bell, User, LogOut, FileText, AlertTriangle, X, Shield, MapPin, Mail, Calendar, Phone, Camera, Heart, UserCheck } from 'lucide-react';
 
 export default function Header({ user, onSignOut, items = [] }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [unreadCount, setUnreadCount] = useState(items.length);
+  const [profilePic, setProfilePic] = useState(user?.profilePicture || user?.photoURL || '');
+  const [updatingPic, setUpdatingPic] = useState(false);
   const dropdownRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Update unread badge when items change
   useEffect(() => {
     setUnreadCount(items.length);
   }, [items]);
+
+  // Sync profile pic if user prop updates
+  useEffect(() => {
+    if (user?.profilePicture || user?.photoURL) {
+      setProfilePic(user.profilePicture || user.photoURL);
+    }
+  }, [user]);
 
   // Close notifications dropdown when clicking outside
   useEffect(() => {
@@ -37,6 +49,37 @@ export default function Header({ user, onSignOut, items = [] }) {
     const identifier = fullName.includes('@') ? fullName.split('@')[0] : fullName;
     const firstName = identifier.trim().split(' ')[0];
     return firstName.charAt(0).toUpperCase() + firstName.slice(1);
+  };
+
+  // Handle profile picture change & save to Firestore
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image size must be less than 2MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64String = reader.result;
+      setProfilePic(base64String);
+      setUpdatingPic(true);
+
+      try {
+        if (user?.uid) {
+          await updateDoc(doc(db, 'users', user.uid), {
+            profilePicture: base64String
+          });
+        }
+      } catch (err) {
+        console.error('Error updating profile picture in Firestore:', err);
+      } finally {
+        setUpdatingPic(false);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -137,7 +180,11 @@ export default function Header({ user, onSignOut, items = [] }) {
               className="flex items-center space-x-2.5 bg-white/15 hover:bg-white/25 transition backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-white/30 shadow-inner cursor-pointer"
               title="View Registered Details"
             >
-              <User size={16} className="text-sky-200" />
+              {profilePic ? (
+                <img src={profilePic} alt="Profile" className="w-6 h-6 rounded-full object-cover border border-white/60" />
+              ) : (
+                <User size={16} className="text-sky-200" />
+              )}
               <span className="text-xs font-bold text-white tracking-wide">
                 {getFirstName()}
               </span>
@@ -159,7 +206,7 @@ export default function Header({ user, onSignOut, items = [] }) {
       {/* Registered Profile Details Modal */}
       {showProfileModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="relative w-full max-w-md bg-gradient-to-br from-white/95 via-sky-50/90 to-blue-100/90 backdrop-blur-2xl border border-white/90 shadow-2xl rounded-3xl p-6 sm:p-8 space-y-6 overflow-hidden">
+          <div className="relative w-full max-w-lg bg-gradient-to-br from-white/95 via-sky-50/90 to-blue-100/90 backdrop-blur-2xl border border-white/90 shadow-2xl rounded-3xl p-6 sm:p-8 space-y-5 overflow-hidden max-h-[90vh] overflow-y-auto no-scrollbar">
             
             {/* Ambient Glow Orbs */}
             <div className="absolute -top-20 -right-20 w-48 h-48 bg-sky-400/30 rounded-full blur-3xl pointer-events-none" />
@@ -173,7 +220,7 @@ export default function Header({ user, onSignOut, items = [] }) {
                 </div>
                 <div>
                   <h3 className="text-base font-black text-sky-950">Resident Profile</h3>
-                  <p className="text-[11px] text-sky-800/80 font-medium">Registered account information</p>
+                  <p className="text-[11px] text-sky-800/80 font-medium">Registered account information & credentials</p>
                 </div>
               </div>
               <button 
@@ -184,37 +231,101 @@ export default function Header({ user, onSignOut, items = [] }) {
               </button>
             </div>
 
-            {/* Details List */}
-            <div className="relative z-10 space-y-3.5 text-xs">
-              <div className="p-3.5 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-1 shadow-sm">
+            {/* Profile Picture Upload Section */}
+            <div className="relative z-10 flex flex-col items-center justify-center space-y-2 py-2">
+              <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-white shadow-md bg-sky-100 flex items-center justify-center">
+                  {profilePic ? (
+                    <img src={profilePic} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={36} className="text-sky-700" />
+                  )}
+                </div>
+                <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
+                  <Camera size={20} />
+                </div>
+              </div>
+              <input 
+                type="file" 
+                accept="image/*" 
+                ref={fileInputRef} 
+                onChange={handleImageChange} 
+                className="hidden" 
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs font-bold text-sky-800 hover:underline"
+              >
+                {updatingPic ? 'Updating photo...' : 'Change Profile Picture'}
+              </button>
+            </div>
+
+            {/* Details Grid */}
+            <div className="relative z-10 space-y-3 text-xs">
+              
+              <div className="p-3 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-0.5 shadow-sm">
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
                   <User size={13} className="text-sky-600" /> Full Name
                 </span>
                 <p className="font-black text-slate-900 text-sm">{user?.fullName || user?.name || 'Not Specified'}</p>
               </div>
 
-              <div className="p-3.5 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-1 shadow-sm">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
-                  <Mail size={13} className="text-sky-600" /> Email Address
-                </span>
-                <p className="font-bold text-slate-900">{user?.email || 'Not Specified'}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-0.5 shadow-sm">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
+                    <Mail size={13} className="text-sky-600" /> Email Address
+                  </span>
+                  <p className="font-bold text-slate-900 truncate">{user?.email || 'Not Specified'}</p>
+                </div>
+
+                <div className="p-3 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-0.5 shadow-sm">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
+                    <Phone size={13} className="text-sky-600" /> Mobile Number
+                  </span>
+                  <p className="font-bold text-slate-900">{user?.phone || 'Not Specified'}</p>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3.5 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-1 shadow-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-0.5 shadow-sm">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
+                    <Calendar size={13} className="text-sky-600" /> Birthdate
+                  </span>
+                  <p className="font-bold text-slate-900">{user?.birthdate || 'Not Specified'}</p>
+                </div>
+
+                <div className="p-3 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-0.5 shadow-sm">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
+                    <Heart size={13} className="text-sky-600" /> Civil Status
+                  </span>
+                  <p className="font-bold text-slate-900">{user?.civilStatus || 'Not Specified'}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-0.5 shadow-sm">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
+                    <UserCheck size={13} className="text-sky-600" /> Gender
+                  </span>
+                  <p className="font-bold text-slate-900">{user?.gender || 'Not Specified'}</p>
+                </div>
+
+                <div className="p-3 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-0.5 shadow-sm">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
                     <MapPin size={13} className="text-sky-600" /> Purok
                   </span>
-                  <p className="font-bold text-slate-900">{user?.purok || user?.purokName || 'Not Specified'}</p>
+                  <p className="font-bold text-slate-900">{user?.purok || 'Not Specified'}</p>
                 </div>
 
-                <div className="p-3.5 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-1 shadow-sm">
+                <div className="p-3 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-0.5 shadow-sm">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
-                    <Shield size={13} className="text-sky-600" /> Account Role
+                    <Shield size={13} className="text-sky-600" /> Role
                   </span>
                   <p className="font-bold text-slate-900 capitalize">{user?.role || 'Resident'}</p>
                 </div>
               </div>
+
             </div>
 
             {/* Close Button */}

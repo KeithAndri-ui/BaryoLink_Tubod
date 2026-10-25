@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { auth, db } from '../firebase';
-import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { UserPlus, Mail, Lock, Phone, ArrowLeft, Upload, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
@@ -104,7 +104,7 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
         gender,
         purok,
         role,
-        status: 'pending',
+        status: 'pending', // Explicitly flagged as pending for staff approval
         idFrontUrl: idFrontPreview,
         idBackUrl: idBackPreview,
         barangay: 'Barangay Tubod',
@@ -112,8 +112,9 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
         createdAt: new Date().toISOString()
       };
 
+      // Write document successfully while fully authenticated
       await setDoc(doc(db, 'users', user.uid), userData);
-      await signOut(auth);
+      
       setSuccessModal(true);
     } catch (err) {
       console.error('Registration error:', err);
@@ -122,7 +123,7 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
       } else if (err.code === 'auth/weak-password') {
         setError('Password should be at least 6 characters long.');
       } else {
-        setError('Registration failed. Please check your details.');
+        setError('Registration failed: ' + err.message);
       }
     } finally {
       setLoading(false);
@@ -481,7 +482,7 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
         </div>
       )}
 
-{/* Success / Pending Approval Notice Modal */}
+      {/* Success / Pending Approval Notice Modal */}
       {successModal && (
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-emerald-100 text-center space-y-4">
@@ -498,7 +499,7 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
               type="button"
               onClick={() => {
                 if (typeof onRegistrationComplete === 'function') {
-                  onRegistrationComplete();
+                  onRegistrationComplete('Your account has been successfully registered, but it is currently pending approval by Barangay Tubod officials. Please wait for verification.');
                 } else {
                   onSwitchToLogin();
                 }
