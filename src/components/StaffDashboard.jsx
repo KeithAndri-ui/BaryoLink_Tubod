@@ -31,7 +31,12 @@ export default function StaffDashboard({ user, onLogout }) {
 
   const pendingUsersList = residentsList.filter(u => {
     const status = (u.status || '').trim().toLowerCase();
-    return !status || status === 'pending' || status === 'unverified' || status !== 'approved';
+    return !status || status === 'pending' || status === 'unverified';
+  });
+
+  const rejectedUsersList = residentsList.filter(u => {
+    const status = (u.status || '').trim().toLowerCase();
+    return status === 'rejected';
   });
   
   const totalRequests = requests.length;
@@ -326,112 +331,111 @@ export default function StaffDashboard({ user, onLogout }) {
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 mt-8 space-y-6 relative z-10">
+      {/* Main Container with Sidebar & Content */}
+      <main className="max-w-7xl mx-auto px-4 mt-8 flex flex-col lg:flex-row gap-6 relative z-10">
 
-        {/* Analytics Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Sidebar Navigation */}
+        <aside className="w-full lg:w-72 shrink-0 space-y-4">
           
-          <div className="relative bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 backdrop-blur-xl border border-white/95 rounded-2xl p-5 shadow-xl shadow-sky-900/10 flex items-center justify-between overflow-hidden">
-            <div className="space-y-1">
-              <p className="text-[11px] font-extrabold text-sky-900 uppercase tracking-wider">Pending Accounts</p>
-              <h3 className="text-2xl font-black text-amber-700">{pendingUsersList.length}</h3>
-              <p className="text-[10px] text-amber-800 font-medium">Awaiting approval</p>
+          <div className="bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 backdrop-blur-xl p-3 rounded-3xl border border-white/95 shadow-xl shadow-sky-900/10 space-y-2">
+            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-sky-900">
+              Navigation Menu
             </div>
-            <div className="w-12 h-12 bg-amber-400/30 border border-amber-300/60 text-amber-900 rounded-2xl flex items-center justify-center shadow-inner backdrop-blur-md">
-              <ShieldAlert size={22} className="text-amber-700" />
-            </div>
-          </div>
 
-          <div className="relative bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 backdrop-blur-xl border border-white/95 rounded-2xl p-5 shadow-xl shadow-sky-900/10 flex items-center justify-between overflow-hidden">
-            <div className="space-y-1">
-              <p className="text-[11px] font-extrabold text-sky-900 uppercase tracking-wider">Pending Requests</p>
-              <h3 className="text-2xl font-black text-amber-700">{pendingRequests}</h3>
-              <p className="text-[10px] text-amber-800 font-medium">Awaiting action</p>
-            </div>
-            <div className="w-12 h-12 bg-sky-400/30 border border-sky-300/60 text-sky-900 rounded-2xl flex items-center justify-center shadow-inner backdrop-blur-md">
-              <Clock size={22} className="text-sky-800" />
-            </div>
-          </div>
-
-          <div className="relative bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 backdrop-blur-xl border border-white/95 rounded-2xl p-5 shadow-xl shadow-sky-900/10 flex items-center justify-between overflow-hidden">
-            <div className="space-y-1">
-              <p className="text-[11px] font-extrabold text-sky-900 uppercase tracking-wider">Total Complaints</p>
-              <h3 className="text-2xl font-black text-slate-900">{totalComplaints}</h3>
-              <p className="text-[10px] text-sky-800 font-medium">All-time filed</p>
-            </div>
-            <div className="w-12 h-12 bg-indigo-400/30 border border-indigo-300/60 text-indigo-900 rounded-2xl flex items-center justify-center shadow-inner backdrop-blur-md">
-              <AlertTriangle size={22} className="text-indigo-800" />
-            </div>
-          </div>
-
-          <div className="relative bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 backdrop-blur-xl border border-white/95 rounded-2xl p-5 shadow-xl shadow-sky-900/10 flex items-center justify-between overflow-hidden">
-            <div className="space-y-1">
-              <p className="text-[11px] font-extrabold text-sky-900 uppercase tracking-wider">Pending Issues</p>
-              <h3 className="text-2xl font-black text-red-600">{pendingComplaints}</h3>
-              <p className="text-[10px] text-red-700 font-medium">Needs review</p>
-            </div>
-            <div className="w-12 h-12 bg-red-400/30 border border-red-300/60 text-red-900 rounded-2xl flex items-center justify-center shadow-inner backdrop-blur-md">
-              <AlertCircleIcon size={22} className="text-red-700" />
-            </div>
-          </div>
-
-        </div>
-
-        {/* Navigation & Separate Residents Action Bar */}
-        <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
-          
-          <div className="flex flex-wrap bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 backdrop-blur-xl p-1.5 rounded-2xl border border-white/95 shadow-xl shadow-sky-900/10">
             <button
               onClick={() => setActiveTab('approvals')}
-              className={`py-2.5 px-5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
-                activeTab === 'approvals' ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-sky-600/30' : 'text-sky-950 hover:bg-white/60'
+              className={`w-full py-3 px-4 rounded-2xl text-xs font-extrabold transition flex items-center justify-between gap-3 ${
+                activeTab === 'approvals' ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-sky-600/30' : 'text-sky-950 bg-white/50 hover:bg-white/80'
               }`}
             >
-              <ShieldCheck size={16} />
-              <span>Pending Accounts ({pendingUsersList.length})</span>
+              <div className="flex items-center gap-2.5">
+                <ShieldCheck size={16} />
+                <span>Pending Accounts</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'approvals' ? 'bg-white/20 text-white' : 'bg-sky-200/70 text-sky-900'}`}>
+                {pendingUsersList.length}
+              </span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('rejected')}
+              className={`w-full py-3 px-4 rounded-2xl text-xs font-extrabold transition flex items-center justify-between gap-3 ${
+                activeTab === 'rejected' ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-sky-600/30' : 'text-sky-950 bg-white/50 hover:bg-white/80'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <XCircle size={16} />
+                <span>Rejected Accounts</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'rejected' ? 'bg-white/20 text-white' : 'bg-red-200/70 text-red-900'}`}>
+                {rejectedUsersList.length}
+              </span>
+            </button>
+
             <button
               onClick={() => setActiveTab('requests')}
-              className={`py-2.5 px-5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
-                activeTab === 'requests' ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-sky-600/30' : 'text-sky-950 hover:bg-white/60'
+              className={`w-full py-3 px-4 rounded-2xl text-xs font-extrabold transition flex items-center justify-between gap-3 ${
+                activeTab === 'requests' ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-sky-600/30' : 'text-sky-950 bg-white/50 hover:bg-white/80'
               }`}
             >
-              <FileText size={16} />
-              <span>Document Requests ({requests.length})</span>
+              <div className="flex items-center gap-2.5">
+                <FileText size={16} />
+                <span>Document Requests</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'requests' ? 'bg-white/20 text-white' : 'bg-sky-200/70 text-sky-900'}`}>
+                {requests.length}
+              </span>
             </button>
+
             <button
               onClick={() => setActiveTab('complaints')}
-              className={`py-2.5 px-5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
-                activeTab === 'complaints' ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-sky-600/30' : 'text-sky-950 hover:bg-white/60'
+              className={`w-full py-3 px-4 rounded-2xl text-xs font-extrabold transition flex items-center justify-between gap-3 ${
+                activeTab === 'complaints' ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-sky-600/30' : 'text-sky-950 bg-white/50 hover:bg-white/80'
               }`}
             >
-              <AlertTriangle size={16} />
-              <span>Complaints ({complaints.length})</span>
+              <div className="flex items-center gap-2.5">
+                <AlertTriangle size={16} />
+                <span>Complaints</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'complaints' ? 'bg-white/20 text-white' : 'bg-amber-200/70 text-amber-900'}`}>
+                {complaints.length}
+              </span>
             </button>
+
             <button
               onClick={() => setActiveTab('announcements')}
-              className={`py-2.5 px-5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
-                activeTab === 'announcements' ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-sky-600/30' : 'text-sky-950 hover:bg-white/60'
+              className={`w-full py-3 px-4 rounded-2xl text-xs font-extrabold transition flex items-center justify-between gap-3 ${
+                activeTab === 'announcements' ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-sky-600/30' : 'text-sky-950 bg-white/50 hover:bg-white/80'
               }`}
             >
-              <Megaphone size={16} />
-              <span>Announcements</span>
+              <div className="flex items-center gap-2.5">
+                <Megaphone size={16} />
+                <span>Announcements</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'announcements' ? 'bg-white/20 text-white' : 'bg-sky-200/70 text-sky-900'}`}>
+                {announcements.length}
+              </span>
             </button>
+
             <button
               onClick={() => setActiveTab('trash')}
-              className={`py-2.5 px-5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
-                activeTab === 'trash' ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-sky-600/30' : 'text-sky-950 hover:bg-white/60'
+              className={`w-full py-3 px-4 rounded-2xl text-xs font-extrabold transition flex items-center justify-between gap-3 ${
+                activeTab === 'trash' ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md shadow-sky-600/30' : 'text-sky-950 bg-white/50 hover:bg-white/80'
               }`}
             >
-              <Trash2 size={16} />
-              <span>Trash Bin ({trashItems.length})</span>
+              <div className="flex items-center gap-2.5">
+                <Trash2 size={16} />
+                <span>Trash Bin</span>
+              </div>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${activeTab === 'trash' ? 'bg-white/20 text-white' : 'bg-slate-200/70 text-slate-900'}`}>
+                {trashItems.length}
+              </span>
             </button>
           </div>
 
           <button
             onClick={() => setShowUsersModal(true)}
-            className="py-3 px-5 bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 hover:from-white hover:to-sky-100 text-sky-950 border border-white/95 shadow-xl shadow-sky-900/10 rounded-2xl text-xs font-extrabold transition flex items-center justify-center gap-2.5 backdrop-blur-xl group"
+            className="w-full py-3.5 px-4 bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 hover:from-white hover:to-sky-100 text-sky-950 border border-white/95 shadow-xl shadow-sky-900/10 rounded-3xl text-xs font-extrabold transition flex items-center justify-center gap-2.5 backdrop-blur-xl group"
           >
             <div className="w-7 h-7 rounded-xl bg-sky-400/30 group-hover:bg-sky-600 group-hover:text-white text-sky-900 flex items-center justify-center transition shadow-inner">
               <Users size={15} />
@@ -439,463 +443,601 @@ export default function StaffDashboard({ user, onLogout }) {
             <span>Approved Residents Directory</span>
           </button>
 
-        </div>
+        </aside>
 
-        {loading ? (
-          <div className="text-center py-20 text-sky-900 font-semibold text-sm">Loading records from Firebase...</div>
-        ) : (
-          <>
-            {activeTab === 'approvals' && (
-              <div className={glassContainerStyle}>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-sky-200/80">
-                  <div>
-                    <h2 className="text-base font-black text-sky-950">Pending Resident Account Approvals</h2>
-                    <p className="text-xs text-sky-900/90 font-medium">Verify newly registered residents and inspect their submitted Valid IDs before granting full access.</p>
-                  </div>
-                </div>
+        {/* Right Content Area */}
+        <div className="flex-1 space-y-6">
 
-                {pendingUsersList.length === 0 ? (
-                  <p className="text-center py-10 text-xs text-sky-900/80 font-medium">No pending accounts waiting for approval.</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-white/50 text-sky-950 uppercase font-extrabold tracking-wider border-b border-sky-200/80">
-                        <tr>
-                          <th className="p-3">Full Name</th>
-                          <th className="p-3">Email Address</th>
-                          <th className="p-3">Purok / Location</th>
-                          <th className="p-3">Valid ID Verification</th>
-                          <th className="p-3">Account Status</th>
-                          <th className="p-3 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-sky-200/60 font-medium">
-                        {pendingUsersList.map(u => (
-                          <tr key={u.id} className="hover:bg-white/60 transition">
-                            <td className="p-3">
-                              <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                                <User size={14} className="text-sky-700" />
-                                <span>{u.fullName || u.name || 'Unnamed Resident'}</span>
-                              </div>
-                            </td>
-                            <td className="p-3 text-sky-950">{u.email || 'No email provided'}</td>
-                            <td className="p-3 text-sky-950 font-semibold">{u.purok || 'N/A'}</td>
-                            <td className="p-3">
-                              <div className="flex items-center gap-1.5">
-                                {u.idFrontUrl ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => setSelectedImage(u.idFrontUrl)}
-                                    className="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
-                                  >
-                                    View Front ID
-                                  </button>
-                                ) : (
-                                  <span className="text-[10px] text-slate-400">No Front ID</span>
-                                )}
-                                {u.idBackUrl ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => setSelectedImage(u.idBackUrl)}
-                                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
-                                  >
-                                    View Back ID
-                                  </button>
-                                ) : (
-                                  <span className="text-[10px] text-slate-400">No Back ID</span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider inline-block bg-amber-500/20 text-amber-900 border border-amber-400/40">
-                                Pending Approval
-                              </span>
-                            </td>
-                            <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
-                              <button
-                                onClick={() => handleUpdateUserAccountStatus(u.id, 'Approved')}
-                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
-                              >
-                                Approve Account
-                              </button>
-                              <button
-                                onClick={() => handleUpdateUserAccountStatus(u.id, 'Rejected')}
-                                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
-                              >
-                                Reject
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+          {/* Analytics Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <div className="relative bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 backdrop-blur-xl border border-white/95 rounded-2xl p-5 shadow-xl shadow-sky-900/10 flex items-center justify-between overflow-hidden">
+              <div className="space-y-1">
+                <p className="text-[11px] font-extrabold text-sky-900 uppercase tracking-wider">Pending Accounts</p>
+                <h3 className="text-2xl font-black text-amber-700">{pendingUsersList.length}</h3>
+                <p className="text-[10px] text-amber-800 font-medium">Awaiting approval</p>
               </div>
-            )}
-
-            {activeTab === 'requests' && (
-              <div className={glassContainerStyle}>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-sky-200/80">
-                  <div>
-                    <h2 className="text-base font-black text-sky-950">Resident Document Requests</h2>
-                    <p className="text-xs text-sky-900/90 font-medium">Review, sort, and update status for clearances, residency, and certificates.</p>
-                  </div>
-                  
-                  <div className="flex flex-wrap items-center gap-3">
-                    {/* Search Bar */}
-                    <div className="relative">
-                      <Search size={14} className="absolute left-3 top-3 text-sky-700" />
-                      <input
-                        type="text"
-                        placeholder="Search requests..."
-                        value={requestSearch}
-                        onChange={(e) => setRequestSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 bg-white/70 backdrop-blur-md border border-sky-200/90 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-sky-500 focus:outline-none shadow-inner text-slate-900 placeholder:text-slate-500 w-48 sm:w-60"
-                      />
-                    </div>
-
-                    {/* Sorting dropdown */}
-                    <div className="flex items-center gap-2 bg-white/70 backdrop-blur-md border border-sky-200/90 px-3 py-2 rounded-xl shadow-inner">
-                      <ArrowUpDown size={14} className="text-sky-700" />
-                      <span className="text-[11px] font-bold text-sky-900">Sort:</span>
-                      <select
-                        value={requestSort}
-                        onChange={(e) => setRequestSort(e.target.value)}
-                        className="bg-transparent text-xs font-extrabold text-slate-900 focus:outline-none cursor-pointer"
-                      >
-                        <option value="newest">Newest Time</option>
-                        <option value="oldest">Oldest Time</option>
-                        <option value="alpha">Alphabetical (A–Z)</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {getFilteredAndSortedRequests().length === 0 ? (
-                  <p className="text-center py-10 text-xs text-sky-900/80 font-medium">No document requests found matching your search.</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-white/50 text-sky-950 uppercase font-extrabold tracking-wider border-b border-sky-200/80">
-                        <tr>
-                          <th className="p-3">Resident & Location</th>
-                          <th className="p-3">Document Type</th>
-                          <th className="p-3">Purpose</th>
-                          <th className="p-3">Submitted At</th>
-                          <th className="p-3">Copies</th>
-                          <th className="p-3">Status</th>
-                          <th className="p-3 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-sky-200/60 font-medium">
-                        {getFilteredAndSortedRequests().map(req => (
-                          <tr key={req.id} className="hover:bg-white/60 transition">
-                            <td className="p-3">
-                              <div className="font-bold text-slate-900">{req.fullName || 'Unknown Resident'}</div>
-                              <div className="text-[11px] text-sky-900 font-semibold">{req.purok || 'Purok N/A'}</div>
-                            </td>
-                            <td className="p-3 font-semibold text-slate-900">{req.title}</td>
-                            <td className="p-3 text-sky-950 max-w-xs truncate">{req.purpose}</td>
-                            <td className="p-3 text-sky-900 whitespace-nowrap">
-                              <div className="flex items-center gap-1 font-semibold">
-                                <Clock size={12} className="text-sky-700 shrink-0" />
-                                <span>{formatDateTime(req.createdAt || req.timestamp)}</span>
-                              </div>
-                            </td>
-                            <td className="p-3 text-slate-900 font-bold">{req.copies || 1}</td>
-                            <td className="p-3">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider inline-block ${
-                                req.status === 'Approved' || req.status === 'Ready for Pickup' ? 'bg-emerald-500/20 text-emerald-900 border border-emerald-400/40' :
-                                req.status === 'Rejected' ? 'bg-red-500/20 text-red-900 border border-red-400/40' : 'bg-amber-500/20 text-amber-900 border border-amber-400/40'
-                              }`}>
-                                {req.status || 'Pending'}
-                              </span>
-                            </td>
-                            <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
-                              <button
-                                onClick={() => handleUpdateReqStatus(req.id, 'Ready for Pickup')}
-                                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => handleUpdateReqStatus(req.id, 'Rejected')}
-                                className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
-                              >
-                                Reject
-                              </button>
-                              <button
-                                onClick={() => handleMoveToTrash(req, 'requests')}
-                                className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
-                                title="Remove / Move to Trash"
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+              <div className="w-12 h-12 bg-amber-400/30 border border-amber-300/60 text-amber-900 rounded-2xl flex items-center justify-center shadow-inner backdrop-blur-md">
+                <ShieldAlert size={22} className="text-amber-700" />
               </div>
-            )}
+            </div>
 
-            {activeTab === 'complaints' && (
-              <div className={glassContainerStyle}>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-sky-200/80">
-                  <div>
-                    <h2 className="text-base font-black text-sky-950">Resident Blotter & Complaints</h2>
-                    <p className="text-xs text-sky-900/90 font-medium">Live reports filed by residents with submission time sorting and alphabetical filtering.</p>
+            <div className="relative bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 backdrop-blur-xl border border-white/95 rounded-2xl p-5 shadow-xl shadow-sky-900/10 flex items-center justify-between overflow-hidden">
+              <div className="space-y-1">
+                <p className="text-[11px] font-extrabold text-sky-900 uppercase tracking-wider">Pending Requests</p>
+                <h3 className="text-2xl font-black text-amber-700">{pendingRequests}</h3>
+                <p className="text-[10px] text-amber-800 font-medium">Awaiting action</p>
+              </div>
+              <div className="w-12 h-12 bg-sky-400/30 border border-sky-300/60 text-sky-900 rounded-2xl flex items-center justify-center shadow-inner backdrop-blur-md">
+                <Clock size={22} className="text-sky-800" />
+              </div>
+            </div>
+
+            <div className="relative bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 backdrop-blur-xl border border-white/95 rounded-2xl p-5 shadow-xl shadow-sky-900/10 flex items-center justify-between overflow-hidden">
+              <div className="space-y-1">
+                <p className="text-[11px] font-extrabold text-sky-900 uppercase tracking-wider">Total Complaints</p>
+                <h3 className="text-2xl font-black text-slate-900">{totalComplaints}</h3>
+                <p className="text-[10px] text-sky-800 font-medium">All-time filed</p>
+              </div>
+              <div className="w-12 h-12 bg-indigo-400/30 border border-indigo-300/60 text-indigo-900 rounded-2xl flex items-center justify-center shadow-inner backdrop-blur-md">
+                <AlertTriangle size={22} className="text-indigo-800" />
+              </div>
+            </div>
+
+            <div className="relative bg-gradient-to-br from-white/85 via-sky-100/70 to-blue-200/60 backdrop-blur-xl border border-white/95 rounded-2xl p-5 shadow-xl shadow-sky-900/10 flex items-center justify-between overflow-hidden">
+              <div className="space-y-1">
+                <p className="text-[11px] font-extrabold text-sky-900 uppercase tracking-wider">Pending Issues</p>
+                <h3 className="text-2xl font-black text-red-600">{pendingComplaints}</h3>
+                <p className="text-[10px] text-red-700 font-medium">Needs review</p>
+              </div>
+              <div className="w-12 h-12 bg-red-400/30 border border-red-300/60 text-red-900 rounded-2xl flex items-center justify-center shadow-inner backdrop-blur-md">
+                <AlertCircleIcon size={22} className="text-red-700" />
+              </div>
+            </div>
+
+          </div>
+
+          {loading ? (
+            <div className="text-center py-20 text-sky-900 font-semibold text-sm">Loading records from Firebase...</div>
+          ) : (
+            <>
+              {activeTab === 'approvals' && (
+                <div className={glassContainerStyle}>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-sky-200/80">
+                    <div>
+                      <h2 className="text-base font-black text-sky-950">Pending Resident Account Approvals</h2>
+                      <p className="text-xs text-sky-900/90 font-medium">Verify newly registered residents and inspect their submitted Valid IDs before granting full access.</p>
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3">
-                    {/* Search Bar */}
-                    <div className="relative">
-                      <Search size={14} className="absolute left-3 top-3 text-sky-700" />
-                      <input
-                        type="text"
-                        placeholder="Search complaints..."
-                        value={complaintSearch}
-                        onChange={(e) => setComplaintSearch(e.target.value)}
-                        className="pl-9 pr-3 py-2 bg-white/70 backdrop-blur-md border border-sky-200/90 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-sky-500 focus:outline-none shadow-inner text-slate-900 placeholder:text-slate-500 w-48 sm:w-60"
-                      />
-                    </div>
-
-                    {/* Sorting dropdown */}
-                    <div className="flex items-center gap-2 bg-white/70 backdrop-blur-md border border-sky-200/90 px-3 py-2 rounded-xl shadow-inner">
-                      <ArrowUpDown size={14} className="text-sky-700" />
-                      <span className="text-[11px] font-bold text-sky-900">Sort:</span>
-                      <select
-                        value={complaintSort}
-                        onChange={(e) => setComplaintSort(e.target.value)}
-                        className="bg-transparent text-xs font-extrabold text-slate-900 focus:outline-none cursor-pointer"
-                      >
-                        <option value="newest">Newest Time</option>
-                        <option value="oldest">Oldest Time</option>
-                        <option value="alpha">Alphabetical (A–Z)</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {getFilteredAndSortedComplaints().length === 0 ? (
-                  <p className="text-center py-10 text-xs text-sky-900/80 font-medium">No complaints found matching your search.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {getFilteredAndSortedComplaints().map(comp => (
-                      <div key={comp.id} className={glassCardStyle}>
-                        <div className="space-y-1.5">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="px-2.5 py-0.5 bg-amber-400/30 border border-amber-300/60 text-amber-900 rounded-md text-[10px] font-black uppercase">
-                              {comp.complaintType || 'General Issue'}
-                            </span>
-                            <span className="font-bold text-xs text-slate-900">{comp.title}</span>
-                            <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase border ${
-                              comp.status === 'Resolved' ? 'bg-emerald-500/20 text-emerald-900 border-emerald-400/40' : 'bg-amber-500/20 text-amber-900 border border-amber-400/40'
-                            }`}>
-                              {comp.status || 'In Review'}
-                            </span>
-                          </div>
-                          <p className="text-xs text-sky-950">{comp.details || comp.description}</p>
-                          <div className="text-[10px] text-sky-900/90 flex items-center gap-2 flex-wrap font-medium">
-                            <span>Filed by: <strong className="text-slate-900">{comp.fullName || 'Resident'}</strong></span>
-                            <span>• Location: <strong className="text-sky-950">{comp.purok || 'N/A'}</strong></span>
-                            <span className="flex items-center gap-1 text-sky-900 font-semibold">
-                              <Clock size={11} className="text-sky-700" />
-                              Submitted: {formatDateTime(comp.createdAt || comp.timestamp || comp.dateStr)}
-                            </span>
-                          </div>
-
-                          {comp.evidenceUrl && (
-                            <div className="mt-3 flex items-center gap-3">
-                              <img 
-                                src={comp.evidenceUrl} 
-                                alt="Evidence Thumbnail" 
-                                onClick={() => setSelectedImage(comp.evidenceUrl)}
-                                className="w-16 h-16 object-cover rounded-xl border border-sky-300 cursor-pointer hover:scale-105 transition shadow-sm"
-                                title="Click to view full image"
-                              />
-                              <div className="flex flex-col">
-                                <span className="text-[11px] font-bold text-sky-950">Attached Evidence Photo</span>
-                                <button 
-                                  type="button"
-                                  onClick={() => setSelectedImage(comp.evidenceUrl)}
-                                  className="text-[11px] font-bold text-sky-700 hover:underline text-left mt-0.5"
+                  {pendingUsersList.length === 0 ? (
+                    <p className="text-center py-10 text-xs text-sky-900/80 font-medium">No pending accounts waiting for approval.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-white/50 text-sky-950 uppercase font-extrabold tracking-wider border-b border-sky-200/80">
+                          <tr>
+                            <th className="p-3">Full Name</th>
+                            <th className="p-3">Email Address</th>
+                            <th className="p-3">Purok / Location</th>
+                            <th className="p-3">Valid ID Verification</th>
+                            <th className="p-3">Account Status</th>
+                            <th className="p-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-sky-200/60 font-medium">
+                          {pendingUsersList.map(u => (
+                            <tr key={u.id} className="hover:bg-white/60 transition">
+                              <td className="p-3">
+                                <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                  <User size={14} className="text-sky-700" />
+                                  <span>{u.fullName || u.name || 'Unnamed Resident'}</span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-sky-950">{u.email || 'No email provided'}</td>
+                              <td className="p-3 text-sky-950 font-semibold">{u.purok || 'N/A'}</td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-1.5">
+                                  {u.idFrontUrl ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedImage(u.idFrontUrl)}
+                                      className="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
+                                    >
+                                      View Front ID
+                                    </button>
+                                  ) : (
+                                    <span className="text-[10px] text-slate-400">No Front ID</span>
+                                  )}
+                                  {u.idBackUrl ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedImage(u.idBackUrl)}
+                                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
+                                    >
+                                      View Back ID
+                                    </button>
+                                  ) : (
+                                    <span className="text-[10px] text-slate-400">No Back ID</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider inline-block bg-amber-500/20 text-amber-900 border border-amber-400/40">
+                                  Pending Approval
+                                </span>
+                              </td>
+                              <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
+                                <button
+                                  onClick={() => handleUpdateUserAccountStatus(u.id, 'Approved')}
+                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
                                 >
-                                  📎 Click to preview larger image
+                                  Approve Account
                                 </button>
-                              </div>
-                            </div>
-                          )}
-
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => handleUpdateComplaintStatus(comp.id, 'In Progress')}
-                            className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-[11px] transition shadow-sm"
-                          >
-                            In Progress
-                          </button>
-                          <button
-                            onClick={() => handleUpdateComplaintStatus(comp.id, 'Resolved')}
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-[11px] transition shadow-sm"
-                          >
-                            Resolve
-                          </button>
-                          <button
-                            onClick={() => handleMoveToTrash(comp, 'complaints')}
-                            className="p-2 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl text-[11px] transition shadow-sm"
-                            title="Remove / Move to Trash"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'announcements' && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                <div className={`${glassContainerStyle} lg:col-span-1`}>
-                  <h3 className="text-sm font-black text-sky-950 flex items-center gap-2">
-                    <Plus size={16} className="text-sky-700" />
-                    <span>Post New Announcement</span>
-                  </h3>
-                  <form onSubmit={handlePostAnnouncement} className="space-y-3">
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-sky-900 uppercase tracking-wider mb-1">Title</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Free Vaccination Drive"
-                        value={annTitle}
-                        onChange={(e) => setAnnTitle(e.target.value)}
-                        className={glassInputStyle}
-                      />
+                                <button
+                                  onClick={() => handleUpdateUserAccountStatus(u.id, 'Rejected')}
+                                  className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
+                                >
+                                  Reject
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-sky-900 uppercase tracking-wider mb-1">Category</label>
-                      <select
-                        value={annCategory}
-                        onChange={(e) => setAnnCategory(e.target.value)}
-                        className={glassInputStyle}
-                      >
-                        <option value="General">General</option>
-                        <option value="Health">Health</option>
-                        <option value="Event">Event</option>
-                        <option value="Emergency">Emergency</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-extrabold text-sky-900 uppercase tracking-wider mb-1">Content / Details</label>
-                      <textarea
-                        rows="4"
-                        required
-                        placeholder="Enter full announcement details here..."
-                        value={annContent}
-                        onChange={(e) => setAnnContent(e.target.value)}
-                        className={`${glassInputStyle} resize-none`}
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      className="w-full bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-xl text-xs shadow-lg shadow-sky-600/25 transition uppercase tracking-wider"
-                    >
-                      Publish Announcement
-                    </button>
-                  </form>
+                  )}
                 </div>
+              )}
 
-                <div className={`${glassContainerStyle} lg:col-span-2`}>
-                  <h3 className="text-sm font-black text-sky-950">Active Barangay Announcements</h3>
-                  
-                  {announcements.length === 0 ? (
-                    <p className="text-center py-10 text-xs text-sky-900/80 font-medium">No announcements posted yet.</p>
+              {activeTab === 'rejected' && (
+                <div className={glassContainerStyle}>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-sky-200/80">
+                    <div>
+                      <h2 className="text-base font-black text-sky-950">Rejected Resident Accounts</h2>
+                      <p className="text-xs text-sky-900/90 font-medium">Review previously rejected registrations and restore them back to pending if rejected by mistake.</p>
+                    </div>
+                  </div>
+
+                  {rejectedUsersList.length === 0 ? (
+                    <p className="text-center py-10 text-xs text-sky-900/80 font-medium">No rejected accounts found.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-white/50 text-sky-950 uppercase font-extrabold tracking-wider border-b border-sky-200/80">
+                          <tr>
+                            <th className="p-3">Full Name</th>
+                            <th className="p-3">Email Address</th>
+                            <th className="p-3">Purok / Location</th>
+                            <th className="p-3">Valid ID Verification</th>
+                            <th className="p-3">Status</th>
+                            <th className="p-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-sky-200/60 font-medium">
+                          {rejectedUsersList.map(u => (
+                            <tr key={u.id} className="hover:bg-white/60 transition">
+                              <td className="p-3">
+                                <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                  <User size={14} className="text-sky-700" />
+                                  <span>{u.fullName || u.name || 'Unnamed Resident'}</span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-sky-950">{u.email || 'No email provided'}</td>
+                              <td className="p-3 text-sky-950 font-semibold">{u.purok || 'N/A'}</td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-1.5">
+                                  {u.idFrontUrl ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedImage(u.idFrontUrl)}
+                                      className="px-2.5 py-1 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
+                                    >
+                                      View Front ID
+                                    </button>
+                                  ) : (
+                                    <span className="text-[10px] text-slate-400">No Front ID</span>
+                                  )}
+                                  {u.idBackUrl ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedImage(u.idBackUrl)}
+                                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
+                                    >
+                                      View Back ID
+                                    </button>
+                                  ) : (
+                                    <span className="text-[10px] text-slate-400">No Back ID</span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider inline-block bg-red-500/20 text-red-900 border border-red-400/40">
+                                  Rejected
+                                </span>
+                              </td>
+                              <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
+                                <button
+                                  onClick={() => handleUpdateUserAccountStatus(u.id, 'pending')}
+                                  className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm flex items-center gap-1 inline-flex"
+                                >
+                                  <RotateCcw size={12} />
+                                  <span>Restore to Pending</span>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'requests' && (
+                <div className={glassContainerStyle}>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-sky-200/80">
+                    <div>
+                      <h2 className="text-base font-black text-sky-950">Resident Document Requests</h2>
+                      <p className="text-xs text-sky-900/90 font-medium">Review, sort, and update status for clearances, residency, and certificates.</p>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Search Bar */}
+                      <div className="relative">
+                        <Search size={14} className="absolute left-3 top-3 text-sky-700" />
+                        <input
+                          type="text"
+                          placeholder="Search requests..."
+                          value={requestSearch}
+                          onChange={(e) => setRequestSearch(e.target.value)}
+                          className="pl-9 pr-3 py-2 bg-white/70 backdrop-blur-md border border-sky-200/90 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-sky-500 focus:outline-none shadow-inner text-slate-900 placeholder:text-slate-500 w-48 sm:w-60"
+                        />
+                      </div>
+
+                      {/* Sorting dropdown */}
+                      <div className="flex items-center gap-2 bg-white/70 backdrop-blur-md border border-sky-200/90 px-3 py-2 rounded-xl shadow-inner">
+                        <ArrowUpDown size={14} className="text-sky-700" />
+                        <span className="text-[11px] font-bold text-sky-900">Sort:</span>
+                        <select
+                          value={requestSort}
+                          onChange={(e) => setRequestSort(e.target.value)}
+                          className="bg-transparent text-xs font-extrabold text-slate-900 focus:outline-none cursor-pointer"
+                        >
+                          <option value="newest">Newest Time</option>
+                          <option value="oldest">Oldest Time</option>
+                          <option value="alpha">Alphabetical (A–Z)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {getFilteredAndSortedRequests().length === 0 ? (
+                    <p className="text-center py-10 text-xs text-sky-900/80 font-medium">No document requests found matching your search.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-white/50 text-sky-950 uppercase font-extrabold tracking-wider border-b border-sky-200/80">
+                          <tr>
+                            <th className="p-3">Resident & Location</th>
+                            <th className="p-3">Document Type</th>
+                            <th className="p-3">Purpose</th>
+                            <th className="p-3">Submitted At</th>
+                            <th className="p-3">Copies</th>
+                            <th className="p-3">Status</th>
+                            <th className="p-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-sky-200/60 font-medium">
+                          {getFilteredAndSortedRequests().map(req => (
+                            <tr key={req.id} className="hover:bg-white/60 transition">
+                              <td className="p-3">
+                                <div className="font-bold text-slate-900">{req.fullName || 'Unknown Resident'}</div>
+                                <div className="text-[11px] text-sky-900 font-semibold">{req.purok || 'Purok N/A'}</div>
+                              </td>
+                              <td className="p-3 font-semibold text-slate-900">{req.title}</td>
+                              <td className="p-3 text-sky-950 max-w-xs truncate">{req.purpose}</td>
+                              <td className="p-3 text-sky-900 whitespace-nowrap">
+                                <div className="flex items-center gap-1 font-semibold">
+                                  <Clock size={12} className="text-sky-700 shrink-0" />
+                                  <span>{formatDateTime(req.createdAt || req.timestamp)}</span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-slate-900 font-bold">{req.copies || 1}</td>
+                              <td className="p-3">
+                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider inline-block ${
+                                  req.status === 'Approved' || req.status === 'Ready for Pickup' ? 'bg-emerald-500/20 text-emerald-900 border border-emerald-400/40' :
+                                  req.status === 'Rejected' ? 'bg-red-500/20 text-red-900 border border-red-400/40' : 'bg-amber-500/20 text-amber-900 border border-amber-400/40'
+                                }`}>
+                                  {req.status || 'Pending'}
+                                </span>
+                              </td>
+                              <td className="p-3 text-right space-x-1.5 whitespace-nowrap">
+                                <button
+                                  onClick={() => handleUpdateReqStatus(req.id, 'Ready for Pickup')}
+                                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
+                                >
+                                  Approve
+                                </button>
+                                <button
+                                  onClick={() => handleUpdateReqStatus(req.id, 'Rejected')}
+                                  className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
+                                >
+                                  Reject
+                                </button>
+                                <button
+                                  onClick={() => handleMoveToTrash(req, 'requests')}
+                                  className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-lg text-[10px] transition shadow-sm"
+                                  title="Remove / Move to Trash"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'complaints' && (
+                <div className={glassContainerStyle}>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-sky-200/80">
+                    <div>
+                      <h2 className="text-base font-black text-sky-950">Resident Blotter & Complaints</h2>
+                      <p className="text-xs text-sky-900/90 font-medium">Live reports filed by residents with submission time sorting and alphabetical filtering.</p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Search Bar */}
+                      <div className="relative">
+                        <Search size={14} className="absolute left-3 top-3 text-sky-700" />
+                        <input
+                          type="text"
+                          placeholder="Search complaints..."
+                          value={complaintSearch}
+                          onChange={(e) => setComplaintSearch(e.target.value)}
+                          className="pl-9 pr-3 py-2 bg-white/70 backdrop-blur-md border border-sky-200/90 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-sky-500 focus:outline-none shadow-inner text-slate-900 placeholder:text-slate-500 w-48 sm:w-60"
+                        />
+                      </div>
+
+                      {/* Sorting dropdown */}
+                      <div className="flex items-center gap-2 bg-white/70 backdrop-blur-md border border-sky-200/90 px-3 py-2 rounded-xl shadow-inner">
+                        <ArrowUpDown size={14} className="text-sky-700" />
+                        <span className="text-[11px] font-bold text-sky-900">Sort:</span>
+                        <select
+                          value={complaintSort}
+                          onChange={(e) => setComplaintSort(e.target.value)}
+                          className="bg-transparent text-xs font-extrabold text-slate-900 focus:outline-none cursor-pointer"
+                        >
+                          <option value="newest">Newest Time</option>
+                          <option value="oldest">Oldest Time</option>
+                          <option value="alpha">Alphabetical (A–Z)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {getFilteredAndSortedComplaints().length === 0 ? (
+                    <p className="text-center py-10 text-xs text-sky-900/80 font-medium">No complaints found matching your search.</p>
                   ) : (
                     <div className="space-y-3">
-                      {announcements.map(ann => (
-                        <div key={ann.id} className={glassCardStyle}>
+                      {getFilteredAndSortedComplaints().map(comp => (
+                        <div key={comp.id} className={glassCardStyle}>
                           <div className="space-y-1.5">
-                            <div className="flex items-center gap-2">
-                              <span className="px-2.5 py-0.5 bg-sky-400/30 border border-sky-300/60 text-sky-900 rounded-md text-[10px] font-black uppercase">{ann.category || 'General'}</span>
-                              <span className="text-[11px] text-sky-900 font-medium">{ann.dateStr}</span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-2.5 py-0.5 bg-amber-400/30 border border-amber-300/60 text-amber-900 rounded-md text-[10px] font-black uppercase">
+                                {comp.complaintType || 'General Issue'}
+                              </span>
+                              <span className="font-bold text-xs text-slate-900">{comp.title}</span>
+                              <span className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase border ${
+                                comp.status === 'Resolved' ? 'bg-emerald-500/20 text-emerald-900 border-emerald-400/40' : 'bg-amber-500/20 text-amber-900 border border-amber-400/40'
+                              }`}>
+                                {comp.status || 'In Review'}
+                              </span>
                             </div>
-                            <h4 className="font-bold text-slate-900 text-xs">{ann.title}</h4>
-                            <p className="text-xs text-sky-950 leading-relaxed">{ann.content}</p>
+                            <p className="text-xs text-sky-950">{comp.details || comp.description}</p>
+                            <div className="text-[10px] text-sky-900/90 flex items-center gap-2 flex-wrap font-medium">
+                              <span>Filed by: <strong className="text-slate-900">{comp.fullName || 'Resident'}</strong></span>
+                              <span>• Location: <strong className="text-sky-950">{comp.purok || 'N/A'}</strong></span>
+                              <span className="flex items-center gap-1 text-sky-900 font-semibold">
+                                <Clock size={11} className="text-sky-700" />
+                                Submitted: {formatDateTime(comp.createdAt || comp.timestamp || comp.dateStr)}
+                              </span>
+                            </div>
+
+                            {comp.evidenceUrl && (
+                              <div className="mt-3 flex items-center gap-3">
+                                <img 
+                                  src={comp.evidenceUrl} 
+                                  alt="Evidence Thumbnail" 
+                                  onClick={() => setSelectedImage(comp.evidenceUrl)}
+                                  className="w-16 h-16 object-cover rounded-xl border border-sky-300 cursor-pointer hover:scale-105 transition shadow-sm"
+                                  title="Click to view full image"
+                                />
+                                <div className="flex flex-col">
+                                  <span className="text-[11px] font-bold text-sky-950">Attached Evidence Photo</span>
+                                  <button 
+                                    type="button"
+                                    onClick={() => setSelectedImage(comp.evidenceUrl)}
+                                    className="text-[11px] font-bold text-sky-700 hover:underline text-left mt-0.5"
+                                  >
+                                    📎 Click to preview larger image
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
                           </div>
-                          <button
-                            onClick={() => handleDeleteAnnouncement(ann.id)}
-                            className="p-2 text-red-600 hover:bg-red-500/20 rounded-xl transition shrink-0"
-                            title="Delete Announcement"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => handleUpdateComplaintStatus(comp.id, 'In Progress')}
+                              className="px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-[11px] transition shadow-sm"
+                            >
+                              In Progress
+                            </button>
+                            <button
+                              onClick={() => handleUpdateComplaintStatus(comp.id, 'Resolved')}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-[11px] transition shadow-sm"
+                            >
+                              Resolve
+                            </button>
+                            <button
+                              onClick={() => handleMoveToTrash(comp, 'complaints')}
+                              className="p-2 bg-slate-700 hover:bg-slate-800 text-white font-bold rounded-xl text-[11px] transition shadow-sm"
+                              title="Remove / Move to Trash"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
+              )}
 
-              </div>
-            )}
-
-            {activeTab === 'trash' && (
-              <div className={glassContainerStyle}>
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-sky-200/80">
-                  <div>
-                    <h2 className="text-base font-black text-sky-950">Trash Bin (Removed Records)</h2>
-                    <p className="text-xs text-sky-900/90 font-medium">Review, restore, or permanently delete removed document requests and complaints.</p>
-                  </div>
-                </div>
-
-                {trashItems.length === 0 ? (
-                  <p className="text-center py-12 text-xs text-sky-900/80 font-medium">Trash bin is currently empty.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {trashItems.map(item => (
-                      <div key={item.id} className={glassCardStyle}>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-0.5 bg-red-500/20 border border-red-300/60 text-red-900 rounded-md text-[10px] font-black uppercase">
-                              {item.collectionName === 'requests' ? 'Document Request' : 'Complaint / Blotter'}
-                            </span>
-                            <span className="font-bold text-xs text-slate-900">{item.itemData?.title || item.itemData?.complaintType || 'Record'}</span>
-                          </div>
-                          <p className="text-xs text-sky-950">{item.itemData?.purpose || item.itemData?.details || item.itemData?.description || 'No additional details'}</p>
-                          <p className="text-[10px] text-sky-900/80 font-medium">
-                            Deleted by staff • <strong className="text-slate-900">{item.itemData?.fullName || 'Resident'}</strong>
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => handleRestoreFromTrash(item.id, item.collectionName, item.itemData)}
-                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-[11px] transition shadow-sm flex items-center gap-1"
-                          >
-                            <RotateCcw size={13} />
-                            <span>Restore</span>
-                          </button>
-                          <button
-                            onClick={() => handlePermanentDelete(item.id)}
-                            className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-[11px] transition shadow-sm flex items-center gap-1"
-                          >
-                            <Trash2 size={13} />
-                            <span>Delete Permanently</span>
-                          </button>
-                        </div>
+              {activeTab === 'announcements' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  
+                  <div className={`${glassContainerStyle} lg:col-span-1`}>
+                    <h3 className="text-sm font-black text-sky-950 flex items-center gap-2">
+                      <Plus size={16} className="text-sky-700" />
+                      <span>Post New Announcement</span>
+                    </h3>
+                    <form onSubmit={handlePostAnnouncement} className="space-y-3">
+                      <div>
+                        <label className="block text-[11px] font-extrabold text-sky-900 uppercase tracking-wider mb-1">Title</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. Free Vaccination Drive"
+                          value={annTitle}
+                          onChange={(e) => setAnnTitle(e.target.value)}
+                          className={glassInputStyle}
+                        />
                       </div>
-                    ))}
+                      <div>
+                        <label className="block text-[11px] font-extrabold text-sky-900 uppercase tracking-wider mb-1">Category</label>
+                        <select
+                          value={annCategory}
+                          onChange={(e) => setAnnCategory(e.target.value)}
+                          className={glassInputStyle}
+                        >
+                          <option value="General">General</option>
+                          <option value="Health">Health</option>
+                          <option value="Event">Event</option>
+                          <option value="Emergency">Emergency</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-extrabold text-sky-900 uppercase tracking-wider mb-1">Content / Details</label>
+                        <textarea
+                          rows="4"
+                          required
+                          placeholder="Enter full announcement details here..."
+                          value={annContent}
+                          onChange={(e) => setAnnContent(e.target.value)}
+                          className={`${glassInputStyle} resize-none`}
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        className="w-full bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-xl text-xs shadow-lg shadow-sky-600/25 transition uppercase tracking-wider"
+                      >
+                        Publish Announcement
+                      </button>
+                    </form>
                   </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
+
+                  <div className={`${glassContainerStyle} lg:col-span-2`}>
+                    <h3 className="text-sm font-black text-sky-950">Active Barangay Announcements</h3>
+                    
+                    {announcements.length === 0 ? (
+                      <p className="text-center py-10 text-xs text-sky-900/80 font-medium">No announcements posted yet.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {announcements.map(ann => (
+                          <div key={ann.id} className={glassCardStyle}>
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="px-2.5 py-0.5 bg-sky-400/30 border border-sky-300/60 text-sky-900 rounded-md text-[10px] font-black uppercase">{ann.category || 'General'}</span>
+                                <span className="text-[11px] text-sky-900 font-medium">{ann.dateStr}</span>
+                              </div>
+                              <h4 className="font-bold text-slate-900 text-xs">{ann.title}</h4>
+                              <p className="text-xs text-sky-950 leading-relaxed">{ann.content}</p>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteAnnouncement(ann.id)}
+                              className="p-2 text-red-600 hover:bg-red-500/20 rounded-xl transition shrink-0"
+                              title="Delete Announcement"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+              )}
+
+              {activeTab === 'trash' && (
+                <div className={glassContainerStyle}>
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-sky-200/80">
+                    <div>
+                      <h2 className="text-base font-black text-sky-950">Trash Bin (Removed Records)</h2>
+                      <p className="text-xs text-sky-900/90 font-medium">Review, restore, or permanently delete removed document requests and complaints.</p>
+                    </div>
+                  </div>
+
+                  {trashItems.length === 0 ? (
+                    <p className="text-center py-12 text-xs text-sky-900/80 font-medium">Trash bin is currently empty.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {trashItems.map(item => (
+                        <div key={item.id} className={glassCardStyle}>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="px-2.5 py-0.5 bg-red-500/20 border border-red-300/60 text-red-900 rounded-md text-[10px] font-black uppercase">
+                                {item.collectionName === 'requests' ? 'Document Request' : 'Complaint / Blotter'}
+                              </span>
+                              <span className="font-bold text-xs text-slate-900">{item.itemData?.title || item.itemData?.complaintType || 'Record'}</span>
+                            </div>
+                            <p className="text-xs text-sky-950">{item.itemData?.purpose || item.itemData?.details || item.itemData?.description || 'No additional details'}</p>
+                            <p className="text-[10px] text-sky-900/80 font-medium">
+                              Deleted by staff • <strong className="text-slate-900">{item.itemData?.fullName || 'Resident'}</strong>
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => handleRestoreFromTrash(item.id, item.collectionName, item.itemData)}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-[11px] transition shadow-sm flex items-center gap-1"
+                            >
+                              <RotateCcw size={13} />
+                              <span>Restore</span>
+                            </button>
+                            <button
+                              onClick={() => handlePermanentDelete(item.id)}
+                              className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-[11px] transition shadow-sm flex items-center gap-1"
+                            >
+                              <Trash2 size={13} />
+                              <span>Delete Permanently</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+
+        </div>
 
       </main>
 

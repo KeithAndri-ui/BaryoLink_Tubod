@@ -115,6 +115,9 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
       // Write document successfully while fully authenticated
       await setDoc(doc(db, 'users', user.uid), userData);
       
+      // Sign out immediately so pending users cannot bypass approval
+      await signOut(auth);
+
       setSuccessModal(true);
     } catch (err) {
       console.error('Registration error:', err);
