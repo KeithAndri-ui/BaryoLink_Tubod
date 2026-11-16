@@ -296,12 +296,15 @@ export default function Register({ onSwitchToLogin, onBackToHome, onRegistration
                   onChange={(e) => setPurok(e.target.value)}
                   className="w-full py-2.5 px-3 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 focus:ring-2 focus:ring-sky-600 focus:outline-none shadow-sm"
                 >
-                  <option>Purok 1</option>
-                  <option>Purok 2</option>
-                  <option>Purok 3</option>
-                  <option>Purok 4</option>
-                  <option>Purok 5</option>
-                  <option>Purok 6</option>
+                  <option>Gawad Kalinga</option>
+                  <option>Lawm Tabay</option>
+                  <option>Bulok-bulok</option>
+                  <option>Dao 1</option>
+                  <option>Dao 2</option>
+                  <option>Proper</option>
+                  <option>Drilling</option>
+                  <option>Upper planta</option>
+                  
                 </select>
               </div>
             </div>

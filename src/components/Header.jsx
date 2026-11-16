@@ -1,14 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-import { Bell, User, LogOut, FileText, AlertTriangle, X, Shield, MapPin, Mail, Calendar, Phone, Camera, Heart, UserCheck } from 'lucide-react';
+import { Bell, User, LogOut, FileText, AlertTriangle, X, Shield, MapPin, Mail, Calendar, Phone, Camera, Heart, UserCheck, Edit3, Check } from 'lucide-react';
 
 export default function Header({ user, onSignOut, items = [] }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(items.length);
   const [profilePic, setProfilePic] = useState(user?.profilePicture || user?.photoURL || '');
   const [updatingPic, setUpdatingPic] = useState(false);
+  const [savingDetails, setSavingDetails] = useState(false);
+
+  // Editable Profile Form State
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [civilStatus, setCivilStatus] = useState(user?.civilStatus || 'Single');
+
   const dropdownRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -17,11 +24,13 @@ export default function Header({ user, onSignOut, items = [] }) {
     setUnreadCount(items.length);
   }, [items]);
 
-  // Sync profile pic if user prop updates
+  // Sync profile pic & fields if user prop updates
   useEffect(() => {
     if (user?.profilePicture || user?.photoURL) {
       setProfilePic(user.profilePicture || user.photoURL);
     }
+    if (user?.phone) setPhone(user.phone);
+    if (user?.civilStatus) setCivilStatus(user.civilStatus);
   }, [user]);
 
   // Close notifications dropdown when clicking outside
@@ -72,6 +81,7 @@ export default function Header({ user, onSignOut, items = [] }) {
           await updateDoc(doc(db, 'users', user.uid), {
             profilePicture: base64String
           });
+          if (user) user.profilePicture = base64String;
         }
       } catch (err) {
         console.error('Error updating profile picture in Firestore:', err);
@@ -80,6 +90,32 @@ export default function Header({ user, onSignOut, items = [] }) {
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  // Handle saving updated phone and civil status to Firestore
+  const handleSaveChanges = async (e) => {
+    e.preventDefault();
+    setSavingDetails(true);
+
+    try {
+      if (user?.uid) {
+        await updateDoc(doc(db, 'users', user.uid), {
+          phone: phone,
+          civilStatus: civilStatus
+        });
+        // Mutate local object if accessible
+        if (user) {
+          user.phone = phone;
+          user.civilStatus = civilStatus;
+        }
+        setIsEditing(false);
+      }
+    } catch (err) {
+      console.error('Error updating profile details:', err);
+      alert('Failed to update details. Please try again.');
+    } finally {
+      setSavingDetails(false);
+    }
   };
 
   return (
@@ -176,7 +212,7 @@ export default function Header({ user, onSignOut, items = [] }) {
             
             {/* Clickable User Profile Badge */}
             <button
-              onClick={() => setShowProfileModal(true)}
+              onClick={() => { setShowProfileModal(true); setIsEditing(false); }}
               className="flex items-center space-x-2.5 bg-white/15 hover:bg-white/25 transition backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-white/30 shadow-inner cursor-pointer"
               title="View Registered Details"
             >
@@ -223,12 +259,23 @@ export default function Header({ user, onSignOut, items = [] }) {
                   <p className="text-[11px] text-sky-800/80 font-medium">Registered account information & credentials</p>
                 </div>
               </div>
-              <button 
-                onClick={() => setShowProfileModal(false)}
-                className="p-2 rounded-xl bg-white/60 hover:bg-white text-slate-700 transition border border-sky-200"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setIsEditing(!isEditing)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border ${
+                    isEditing ? 'bg-sky-700 text-white border-sky-800' : 'bg-white/70 hover:bg-white text-sky-900 border-sky-200'
+                  }`}
+                >
+                  <Edit3 size={14} />
+                  <span>{isEditing ? 'Cancel Edit' : 'Edit Profile'}</span>
+                </button>
+                <button 
+                  onClick={() => setShowProfileModal(false)}
+                  className="p-2 rounded-xl bg-white/60 hover:bg-white text-slate-700 transition border border-sky-200"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Profile Picture Upload Section */}
@@ -261,8 +308,8 @@ export default function Header({ user, onSignOut, items = [] }) {
               </button>
             </div>
 
-            {/* Details Grid */}
-            <div className="relative z-10 space-y-3 text-xs">
+            {/* Details Form / View */}
+            <form onSubmit={handleSaveChanges} className="relative z-10 space-y-3 text-xs">
               
               <div className="p-3 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-0.5 shadow-sm">
                 <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
@@ -279,11 +326,22 @@ export default function Header({ user, onSignOut, items = [] }) {
                   <p className="font-bold text-slate-900 truncate">{user?.email || 'Not Specified'}</p>
                 </div>
 
-                <div className="p-3 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-0.5 shadow-sm">
+                <div className="p-3 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-1 shadow-sm">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
-                    <Phone size={13} className="text-sky-600" /> Mobile Number
+                    <Phone size={13} className="text-sky-600" /> Mobile Number {isEditing && <span className="text-red-500">*</span>}
                   </span>
-                  <p className="font-bold text-slate-900">{user?.phone || 'Not Specified'}</p>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      required
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+63 9XXXXXXXXX"
+                      className="w-full px-2.5 py-1.5 bg-white border border-sky-300 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-sky-600 focus:outline-none"
+                    />
+                  ) : (
+                    <p className="font-bold text-slate-900">{phone || 'Not Specified'}</p>
+                  )}
                 </div>
               </div>
 
@@ -295,11 +353,25 @@ export default function Header({ user, onSignOut, items = [] }) {
                   <p className="font-bold text-slate-900">{user?.birthdate || 'Not Specified'}</p>
                 </div>
 
-                <div className="p-3 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-0.5 shadow-sm">
+                <div className="p-3 bg-white/70 backdrop-blur-md rounded-2xl border border-sky-200/80 space-y-1 shadow-sm">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-sky-800 flex items-center gap-1.5">
-                    <Heart size={13} className="text-sky-600" /> Civil Status
+                    <Heart size={13} className="text-sky-600" /> Civil Status {isEditing && <span className="text-red-500">*</span>}
                   </span>
-                  <p className="font-bold text-slate-900">{user?.civilStatus || 'Not Specified'}</p>
+                  {isEditing ? (
+                    <select
+                      value={civilStatus}
+                      onChange={(e) => setCivilStatus(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-white border border-sky-300 rounded-xl text-xs font-bold text-slate-900 focus:ring-2 focus:ring-sky-600 focus:outline-none"
+                    >
+                      <option value="Single">Single</option>
+                      <option value="Married">Married</option>
+                      <option value="Widowed">Widowed</option>
+                      <option value="Divorced">Divorced</option>
+                      <option value="Separated">Separated</option>
+                    </select>
+                  ) : (
+                    <p className="font-bold text-slate-900">{civilStatus || 'Not Specified'}</p>
+                  )}
                 </div>
               </div>
 
@@ -326,17 +398,38 @@ export default function Header({ user, onSignOut, items = [] }) {
                 </div>
               </div>
 
-            </div>
+              {/* Action Buttons for Edit Mode */}
+              {isEditing ? (
+                <div className="pt-2 flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={savingDetails}
+                    className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-emerald-600/25 transition text-xs tracking-wider uppercase flex items-center justify-center gap-2"
+                  >
+                    <Check size={15} />
+                    <span>{savingDetails ? 'Saving...' : 'Save Changes'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="px-4 py-3 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold rounded-2xl text-xs transition uppercase"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowProfileModal(false)}
+                    className="w-full bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-sky-600/25 transition text-xs tracking-wider uppercase"
+                  >
+                    Close Profile
+                  </button>
+                </div>
+              )}
 
-            {/* Close Button */}
-            <div className="relative z-10 pt-2">
-              <button
-                onClick={() => setShowProfileModal(false)}
-                className="w-full bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white font-bold py-3 px-6 rounded-2xl shadow-lg shadow-sky-600/25 transition text-xs tracking-wider uppercase"
-              >
-                Close Profile
-              </button>
-            </div>
+            </form>
 
           </div>
         </div>
